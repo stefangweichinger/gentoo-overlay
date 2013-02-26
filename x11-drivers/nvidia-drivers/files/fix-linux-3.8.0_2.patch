@@ -1,0 +1,7 @@
+--- kernel/nv-mmap.c.orig	2013-02-19 15:21:04.832194338 +0100
++++ kernel/nv-mmap.c	2013-02-19 15:21:35.983194334 +0100
+@@ -465,3 +465,3 @@
+ 
+-        vma->vm_flags |= (VM_IO | VM_LOCKED | VM_RESERVED);
++        vma->vm_flags |= (VM_IO | VM_LOCKED | (VM_DONTEXPAND | VM_DONTDUMP));
+ 
