@@ -1,0 +1,12 @@
+diff -Naur open-iscsi-2.0-865.12.orig/kernel/Makefile open-iscsi-2.0-865.12/kernel/Makefile
+--- open-iscsi-2.0-865.12.orig/kernel/Makefile	2007-07-31 20:04:09.000000000 +0200
++++ open-iscsi-2.0-865.12/kernel/Makefile	2007-10-31 11:06:30.046284536 +0100
+@@ -88,6 +88,8 @@
+ 
+ linux_2_6_22: $(unpatch_code)
+ 
++linux_2_6_23: $(unpatch_code)
++
+ do_unpatch_code:
+ 	echo "Un-patching source code for use with linux-2.6.20 and up ..."
+ 	patch -R -E -p1 < $(cur_patched)
