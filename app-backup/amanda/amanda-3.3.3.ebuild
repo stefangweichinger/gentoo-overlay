@@ -13,7 +13,7 @@ LICENSE="HPND BSD BSD-2 GPL-2+ GPL-3+"
 SLOT="0"
 KEYWORDS="~amd64 ~ppc ~ppc64 ~sparc ~x86"
 RDEPEND="sys-libs/readline
-	sys-apps/gawk
+	virtual/awk
 	app-arch/tar
 	>=dev-lang/perl-5.6
 	app-arch/dump
@@ -184,6 +184,9 @@ src_prepare() {
 src_configure() {
 	# fix bug #36316
 	addpredict /var/cache/samba/gencache.tdb
+	# fix bug #376169
+	addpredict /run/blkid
+	addpredict /etc/blkid.tab
 
 	[ ! -f "${TMPENVFILE}" ] && die "Variable setting file (${TMPENVFILE}) should exist!"
 	source "${TMPENVFILE}"
