@@ -27,6 +27,7 @@ RDEPEND="sys-libs/readline
 	xfs? ( sys-fs/xfsdump )
 	readline? ( sys-libs/readline )
 	!systemd? ( virtual/inetd )
+	systemd? ( sys-apps/systemd )
 	!minimal? (
 		virtual/mailx
 		app-arch/mt-st
