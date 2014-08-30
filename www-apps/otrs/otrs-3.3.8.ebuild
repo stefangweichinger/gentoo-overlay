@@ -145,13 +145,25 @@ pkg_config() {
 }
 
 pkg_postinst() {
-	
+
+	einfo "Setting correct permissions ..."
 		/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.SetPermissions.pl "${OTRS_HOME}" \
 		--otrs-user=otrs \
 		--web-user=apache \
 		--otrs-group=apache \
 		--web-group=apache \
 		|| die "Could not set permissions"
+
+
+	einfo "Rebuilding config ..."
+	/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.RebuildConfig.pl \
+	|| die "Could not rebuild config"
+
+	einfo "Deleting cache ..."
+	/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.DeleteCache.pl \
+	|| die "Could not delete cache"
+
+	einfo "Installation done!"
 
 	elog "Enable cronjobs with the following command:"
 	elog "crontab -u otrs crontab"
