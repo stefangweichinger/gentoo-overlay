@@ -1,6 +1,6 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/www-apps/otrs/otrs-3.2.8.ebuild,v 1.1 2013/06/25 07:27:22 patrick Exp $
+# $Header: /var/cvsroot/gentoo-x86/www-apps/otrs/otrs-3.2.12.ebuild,v 1.1 2013/12/02 05:47:35 patrick Exp $
 
 EAPI=2
 
@@ -112,13 +112,6 @@ src_prepare() {
 		cp ${i} $(basename ${i} .dist) || die
 	done
 
-#	perl "${S}"/bin/otrs.SetPermissions.pl \
-#		--otrs-user=otrs \
-#		--web-user=apache \
-#		--otrs-group=apache \
-#		--web-group=apache "${S}" \
-#		|| die "Could not set permissions"
-
 	echo "CONFIG_PROTECT=\"${OTRS_HOME}/Kernel/Config.pm \
 		${OTRS_HOME}/Kernel/Config/GenericAgent.pm\"" > "${T}/50${PN}"
 
@@ -141,6 +134,8 @@ src_install() {
 		keepdir "${OTRS_HOME}/var/${a}"
 	done
 	doenvd "${T}/50${PN}" || die
+	
+
 }
 
 # This is too automagic, either einfo telling user or installing to /etc/cron.d/ should be preferred
@@ -150,6 +145,14 @@ pkg_config() {
 }
 
 pkg_postinst() {
+	
+		/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.SetPermissions.pl "${OTRS_HOME}" \
+		--otrs-user=otrs \
+		--web-user=apache \
+		--otrs-group=apache \
+		--web-group=apache \
+		|| die "Could not set permissions"
+
 	elog "Enable cronjobs with the following command:"
 	elog "crontab -u otrs crontab"
 }
