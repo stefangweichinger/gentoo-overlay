@@ -21,6 +21,7 @@ SLOT="0"
 
 DEPEND=""
 RDEPEND="${DEPEND}
+	dev-perl/Archive-Zip
 	dev-perl/Authen-SASL
 	dev-perl/Crypt-PasswdMD5
 	dev-perl/CSS-Minifier
@@ -52,6 +53,7 @@ RDEPEND="${DEPEND}
 		dev-perl/SOAP-Lite
 		!=dev-perl/SOAP-Lite-0.711
 		!=dev-perl/SOAP-Lite-0.712 )
+	dev-perl/Template-Toolkit
 	dev-perl/Text-CSV
 	dev-perl/Text-CSV_XS
 	dev-perl/TimeDate
@@ -152,8 +154,6 @@ pkg_postinst() {
 	einfo "Setting correct permissions ..."
 		/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.SetPermissions.pl "${OTRS_HOME}" \
 		--otrs-user=otrs \
-		--web-user=apache \
-		--otrs-group=apache \
 		--web-group=apache \
 		|| die "Could not set permissions"
 

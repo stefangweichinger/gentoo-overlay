@@ -1,6 +1,6 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/www-apps/otrs/otrs-3.2.8.ebuild,v 1.1 2013/06/25 07:27:22 patrick Exp $
+# $Header: /var/cvsroot/gentoo-x86/www-apps/otrs/otrs-3.2.12.ebuild,v 1.1 2013/12/02 05:47:35 patrick Exp $
 
 EAPI=2
 
@@ -8,17 +8,7 @@ inherit eutils confutils user
 
 DESCRIPTION="OTRS is an Open source Ticket Request System"
 HOMEPAGE="http://otrs.org/"
-
-if [ ${PV} == "9999" ] ; then
-	inherit git-2 linux-mod
-	EGIT_REPO_URI="git://github.com/OTRS/${PN}.git"
-else
-	inherit eutils versionator
-	MY_PV=$(replace_version_separator 3 '-')
-	SRC_URI="https://github.com/OTRS/${PN}/archive/${PN}-${MY_PV}.tar.gz"
-	S="${WORKDIR}/${PN}-${PN}-${MY_PV}"
-	KEYWORDS="~amd64"
-fi
+SRC_URI="http://ftp.otrs.org/pub/${PN}/${P}.tar.bz2"
 
 LICENSE="AGPL-3"
 KEYWORDS="~amd64 ~x86"
@@ -31,6 +21,7 @@ SLOT="0"
 
 DEPEND=""
 RDEPEND="${DEPEND}
+	dev-perl/Archive-Zip
 	dev-perl/Authen-SASL
 	dev-perl/Crypt-PasswdMD5
 	dev-perl/CSS-Minifier
@@ -62,6 +53,7 @@ RDEPEND="${DEPEND}
 		dev-perl/SOAP-Lite
 		!=dev-perl/SOAP-Lite-0.711
 		!=dev-perl/SOAP-Lite-0.712 )
+	dev-perl/Template-Toolkit
 	dev-perl/Text-CSV
 	dev-perl/Text-CSV_XS
 	dev-perl/TimeDate
@@ -99,7 +91,9 @@ pkg_setup() {
 	confutils_require_any mysql postgres
 }
 
+
 src_prepare() {
+	cd "${S}"
 	rm -fr "${S}/scripts"/{auto_*,redhat*,suse*,*.spec} || die
 	cp Kernel/Config.pm{.dist,} || die
 	# procmail/fetchmail/mailfilter
@@ -122,23 +116,13 @@ src_prepare() {
 		cp ${i} $(basename ${i} .dist) || die
 	done
 
-	perl "${S}"/bin/otrs.SetPermissions.pl \
-		--otrs-user=otrs \
-		--web-user=apache \
-		--otrs-group=apache \
-		--web-group=apache "${S}" \
-		|| die "Could not set permissions"
-
 	echo "CONFIG_PROTECT=\"${OTRS_HOME}/Kernel/Config.pm \
 		${OTRS_HOME}/Kernel/Config/GenericAgent.pm\"" > "${T}/50${PN}"
 
 }
 
 src_install() {
-	dodoc CHANGES.md README* \
-	 	doc/X-OTRS-Headers.txt || die
-
-	dodoc doc/manual/en/otrs_admin_book.pdf
+	dodoc CHANGES.md README* || die
 
 	insinto "${OTRS_HOME}"
 	doins -r .fetchmailrc.dist .mailfilter.dist .procmailrc.dist RELEASE \
@@ -152,6 +136,8 @@ src_install() {
 		keepdir "${OTRS_HOME}/var/${a}"
 	done
 	doenvd "${T}/50${PN}" || die
+	
+
 }
 
 # This is too automagic, either einfo telling user or installing to /etc/cron.d/ should be preferred
@@ -161,6 +147,24 @@ pkg_config() {
 }
 
 pkg_postinst() {
+
+	einfo "Setting correct permissions ..."
+		/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.SetPermissions.pl "${OTRS_HOME}" \
+		--otrs-user=otrs \
+		--web-group=apache \
+		|| die "Could not set permissions"
+
+
+	einfo "Rebuilding config ..."
+	/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.RebuildConfig.pl \
+	|| die "Could not rebuild config"
+
+	einfo "Deleting cache ..."
+	/usr/bin/env perl "${OTRS_HOME}"/bin/otrs.DeleteCache.pl \
+	|| die "Could not delete cache"
+
+	einfo "Installation done!"
+
 	elog "Enable cronjobs with the following command:"
 	elog "crontab -u otrs crontab"
 }
