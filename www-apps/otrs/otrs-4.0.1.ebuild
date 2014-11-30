@@ -91,7 +91,6 @@ pkg_setup() {
 	confutils_require_any mysql postgres
 }
 
-
 src_prepare() {
 	cd "${S}"
 	rm -fr "${S}/scripts"/{auto_*,redhat*,suse*,*.spec} || die
@@ -136,8 +135,6 @@ src_install() {
 		keepdir "${OTRS_HOME}/var/${a}"
 	done
 	doenvd "${T}/50${PN}" || die
-	
-
 }
 
 # This is too automagic, either einfo telling user or installing to /etc/cron.d/ should be preferred
