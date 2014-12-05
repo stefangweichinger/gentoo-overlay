@@ -23,6 +23,9 @@ IUSE=""
 
 DEPEND=" virtual/libusb
 	virtual/udev
+	dev-python/pyqwt
+	x11-libs/qwt
+	dev-python/pyserial
 	${GIT_DEPEND}"
 RDEPEND="${DEPEND}"
 
