@@ -1,6 +1,6 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3.ebuild,v 1.8 2013/09/10 06:14:32 idella4 Exp $
+# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3-r1.ebuild,v 1.1 2013/11/23 09:08:55 pacho Exp $
 
 EAPI=5
 inherit autotools eutils perl-module user systemd
@@ -10,7 +10,7 @@ HOMEPAGE="http://www.amanda.org/"
 SRC_URI="mirror://sourceforge/amanda/${P}.tar.gz"
 LICENSE="HPND BSD BSD-2 GPL-2+ GPL-3+"
 SLOT="0"
-KEYWORDS="amd64 ppc ppc64 ~sparc x86"
+KEYWORDS="~amd64 ~ppc ~ppc64 ~sparc ~x86"
 RDEPEND="sys-libs/readline
 	virtual/awk
 	app-arch/tar
@@ -335,7 +335,7 @@ src_install() {
 
 	einfo "Installing systemd service and socket files for Amanda"
 	systemd_dounit "${FILESDIR}"/amanda.socket || die
-	systemd_newunit "${FILESDIR}"/amanda.service 'amanda@.service' || die
+	systemd_newunit "${FILESDIR}"/amanda.service-r1 'amanda@.service' || die
 
 	insinto /etc/amanda
 	einfo "Installing .amandahosts File for ${AMANDA_USER_NAME} user"
@@ -370,19 +370,16 @@ src_install() {
 	done
 	# Do NOT use -R
 	fperms 0700 \
-	"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
-	"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
-	"${AMANDA_USER_HOMEDIR}/amanda" \
-	/etc/amanda
-
-	if ! use minimal ; then
-		fperms 0700 \
-			"${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
-			/etc/amanda/${AMANDA_CONFIG_NAME}
-	fi
-
-		einfo "Setting setuid permissions"
-		amanda_permissions_fix "${D}"
+		"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
+		"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
+		 "${AMANDA_USER_HOMEDIR}/amanda" \
+		 /etc/amanda
+		 
+		 	if ! use minimal ; then
+		 		fperms 0700 \
+		 			 "${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
+		 	         /etc/amanda/${AMANDA_CONFIG_NAME}
+		 	fi
 
 	einfo "Setting setuid permissions"
 	amanda_permissions_fix "${D}"

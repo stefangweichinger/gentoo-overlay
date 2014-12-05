@@ -1,6 +1,6 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3.ebuild,v 1.8 2013/09/10 06:14:32 idella4 Exp $
+# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3-r1.ebuild,v 1.7 2014/05/21 12:07:27 pinkbyte Exp $
 
 EAPI=5
 inherit autotools eutils perl-module user systemd
@@ -27,6 +27,7 @@ RDEPEND="sys-libs/readline
 	readline? ( sys-libs/readline )
 	!systemd? ( virtual/inetd )
 	!minimal? (
+		dev-perl/XML-Simple
 		virtual/mailx
 		app-arch/mt-st
 		sys-block/mtx
@@ -131,7 +132,7 @@ pkg_setup() {
 
 src_unpack() {
 	# we do not want the perl src_unpack
-	base_src_unpack
+	default_src_unpack
 }
 
 src_prepare() {
@@ -284,6 +285,9 @@ src_configure() {
 	# build manpages
 	myconf="${myconf} --enable-manpage-build"
 
+	# bug #483120
+	tc-export AR
+
 	econf \
 		$(use_with readline) \
 		${myconf}
@@ -291,7 +295,7 @@ src_configure() {
 
 src_compile() {
 	# Again, do not want the perl-module src_compile
-	base_src_compile
+	default_src_compile
 }
 
 src_install() {
@@ -335,7 +339,7 @@ src_install() {
 
 	einfo "Installing systemd service and socket files for Amanda"
 	systemd_dounit "${FILESDIR}"/amanda.socket || die
-	systemd_newunit "${FILESDIR}"/amanda.service 'amanda@.service' || die
+	systemd_newunit "${FILESDIR}"/amanda.service-r1 'amanda@.service' || die
 
 	insinto /etc/amanda
 	einfo "Installing .amandahosts File for ${AMANDA_USER_NAME} user"
@@ -370,19 +374,16 @@ src_install() {
 	done
 	# Do NOT use -R
 	fperms 0700 \
-	"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
-	"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
-	"${AMANDA_USER_HOMEDIR}/amanda" \
-	/etc/amanda
+		"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
+		"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
+		 "${AMANDA_USER_HOMEDIR}/amanda" \
+		 /etc/amanda
 
 	if ! use minimal ; then
 		fperms 0700 \
-			"${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
-			/etc/amanda/${AMANDA_CONFIG_NAME}
+			 "${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
+	         /etc/amanda/${AMANDA_CONFIG_NAME}
 	fi
-
-		einfo "Setting setuid permissions"
-		amanda_permissions_fix "${D}"
 
 	einfo "Setting setuid permissions"
 	amanda_permissions_fix "${D}"
