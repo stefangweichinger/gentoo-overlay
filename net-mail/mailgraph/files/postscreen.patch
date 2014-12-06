@@ -1,0 +1,24 @@
+Index: mailgraph-1.14/mailgraph.pl
+===================================================================
+--- mailgraph-1.14.orig/mailgraph.pl	2012-02-28 09:53:56.000000000 +0100
++++ mailgraph-1.14/mailgraph.pl	2012-02-28 09:54:03.000000000 +0100
+@@ -659,6 +659,19 @@
+ 				event($time, 'rejected');
+ 			}
+ 		}
++		elsif($prog eq 'postscreen') {
++			if($text =~ /NOQUEUE: reject: RCPT from .* /) {
++				if($text =~ /Service unavailable; /) {
++					event($time, 'rejected');
++				}
++				elsif($text =~ /Protocol error; /) {
++					event($time, 'rejected');
++				}
++				elsif($text =~ /too many connections /) {
++					event($time, 'rejected');
++				}
++			}
++		}
+ 	}
+ 	elsif($prog eq 'sendmail' or $prog eq 'sm-mta') {
+ 		if($text =~ /\bmailer=local\b/ ) {

@@ -1,0 +1,268 @@
+Index: mailgraph-1.14/mailgraph.pl
+===================================================================
+--- mailgraph-1.14.orig/mailgraph.pl	2012-02-28 09:53:56.000000000 +0100
++++ mailgraph-1.14/mailgraph.pl	2012-02-28 09:54:03.000000000 +0100
+@@ -364,7 +364,7 @@
+ use Getopt::Long;
+ use POSIX 'setsid';
+ 
+-my $VERSION = "1.14";
++my $VERSION = "1.14g3";
+ 
+ # config
+ my $rrdstep = 60;
+@@ -379,9 +379,10 @@
+ my $logfile;
+ my $rrd = "mailgraph.rrd";
+ my $rrd_virus = "mailgraph_virus.rrd";
++my $rrd_greylist = "mailgraph_greylist.rrd";
+ my $year;
+ my $this_minute;
+-my %sum = ( sent => 0, received => 0, bounced => 0, rejected => 0, virus => 0, spam => 0 );
++my %sum = ( sent => 0, received => 0, bounced => 0, rejected => 0, virus => 0, spam => 0, greylisted => 0, delayed => 0);
+ my $rrd_inited=0;
+ 
+ my %opt = ();
+@@ -395,6 +396,8 @@
+ sub event_rejected($);
+ sub event_virus($);
+ sub event_spam($);
++sub event_greylisted($);
++sub event_delayed($);
+ sub init_rrd($);
+ sub update($);
+ 
+@@ -415,8 +418,9 @@
+ 	print "  --daemon-log=FILE  write verbose-log to FILE instead of /var/log/mailgraph.log\n";
+ 	print "  --ignore-localhost ignore mail to/from localhost (used for virus scanner)\n";
+ 	print "  --ignore-host=HOST ignore mail to/from HOST regexp (used for virus scanner)\n";
+-	print "  --only-mail-rrd    update only the mail rrd\n";
+-	print "  --only-virus-rrd   update only the virus rrd\n";
++	print "  --no-mail-rrd      no update mail rrd\n";
++	print "  --no-virus-rrd     no update virus rrd\n";
++	print "  --no-greylist-rrd  no update greylist rrd\n";
+ 	print "  --rrd-name=NAME    use NAME.rrd and NAME_virus.rrd for the rrd files\n";
+ 	print "  --rbl-is-spam      count rbl rejects as spam\n";
+ 	print "  --virbl-is-virus   count virbl rejects as viruses\n";
+@@ -431,7 +435,7 @@
+ 		'year|y=i', 'host=s', 'verbose|v', 'daemon|d!',
+ 		'daemon_pid|daemon-pid=s', 'daemon_rrd|daemon-rrd=s',
+ 		'daemon_log|daemon-log=s', 'ignore-localhost!', 'ignore-host=s@',
+-		'only-mail-rrd', 'only-virus-rrd', 'rrd_name|rrd-name=s',
++		'no-mail-rrd', 'no-virus-rrd', 'no-greylist-rrd', 'rrd_name|rrd-name=s',
+ 		'rbl-is-spam', 'virbl-is-virus'
+ 		) or exit(1);
+ 	usage if $opt{help};
+@@ -446,6 +450,7 @@
+ 	$daemon_rrd_dir = $opt{daemon_rrd} if defined $opt{daemon_rrd};
+ 	$rrd		= $opt{rrd_name}.".rrd" if defined $opt{rrd_name};
+ 	$rrd_virus	= $opt{rrd_name}."_virus.rrd" if defined $opt{rrd_name};
++	$rrd_greylist	= $opt{rrd_name}."_greylist.rrd" if defined $opt{rrd_name};
+ 
+ 	# compile --ignore-host regexps
+ 	if(defined $opt{'ignore-host'}) {
+@@ -522,7 +527,7 @@
+ 	my $year_steps = $month_steps*12;
+ 
+ 	# mail rrd
+-	if(! -f $rrd and ! $opt{'only-virus-rrd'}) {
++	if(! -f $rrd and ! $opt{'no-mail-rrd'}) {
+ 		RRDs::create($rrd, '--start', $m, '--step', $rrdstep,
+ 				'DS:sent:ABSOLUTE:'.($rrdstep*2).':0:U',
+ 				'DS:recv:ABSOLUTE:'.($rrdstep*2).':0:U',
+@@ -544,7 +549,7 @@
+ 	}
+ 
+ 	# virus rrd
+-	if(! -f $rrd_virus and ! $opt{'only-mail-rrd'}) {
++	if(! -f $rrd_virus and ! $opt{'no-virus-rrd'}) {
+ 		RRDs::create($rrd_virus, '--start', $m, '--step', $rrdstep,
+ 				'DS:virus:ABSOLUTE:'.($rrdstep*2).':0:U',
+ 				'DS:spam:ABSOLUTE:'.($rrdstep*2).':0:U',
+@@ -561,6 +566,25 @@
+ 	elsif(-f $rrd_virus and ! defined $rrd_virus) {
+ 		$this_minute = RRDs::last($rrd_virus) + $rrdstep;
+ 	}
++        # greylist rrd
++        if(! -f $rrd_greylist and ! $opt{'no-greylist-rrd'}) {
++                        RRDs::create($rrd_greylist, '--start', $m, '--step', $rrdstep,
++                                'DS:greylisted:ABSOLUTE:'.($rrdstep*2).':0:U',
++                                'DS:delayed:ABSOLUTE:'.($rrdstep*2).':0:U',
++                                "RRA:AVERAGE:0.5:$day_steps:$realrows",   # day
++                                "RRA:AVERAGE:0.5:$week_steps:$realrows",  # week
++                                "RRA:AVERAGE:0.5:$month_steps:$realrows", # month
++                                "RRA:AVERAGE:0.5:$year_steps:$realrows",  # year
++                                "RRA:MAX:0.5:$day_steps:$realrows",   # day
++                                "RRA:MAX:0.5:$week_steps:$realrows",  # week
++                                "RRA:MAX:0.5:$month_steps:$realrows", # month
++                                "RRA:MAX:0.5:$year_steps:$realrows",  # year
++                                );
++                $this_minute = $m;
++        }
++        elsif(-f $rrd_greylist and ! defined $rrd_greylist) {
++                $this_minute = RRDs::last($rrd_greylist) + $rrdstep;
++        }
+ 
+ 	$rrd_inited=1;
+ }
+@@ -610,6 +634,9 @@
+ 			elsif($opt{'rbl-is-spam'} and $text    =~ /^(?:[0-9A-Z]+: |NOQUEUE: )?reject: .*: 554.* blocked using/) {
+ 				event($time, 'spam');
+ 			}
++                        elsif($text =~ /Greylisted/) {
++                                event($time, 'greylisted');
++                        }
+ 			elsif($text =~ /^(?:[0-9A-Z]+: |NOQUEUE: )?reject: /) {
+ 				event($time, 'rejected');
+ 			}
+@@ -853,6 +880,16 @@
+ 			event($time, 'virus');
+ 		}
+ 	}
++        elsif($prog eq 'postgrey') {
++                # Old versions (up to 1.27)
++                if($text =~ /delayed [0-9]+ seconds: client/) {
++                        event($time, 'delayed');
++                }
++                # New versions (from 1.28)
++                if($text =~ /delay=[0-9]+/) {
++                        event($time, 'delayed');
++                }
++        }
+ }
+ 
+ sub event($$)
+@@ -870,14 +907,16 @@
+ 	return 1 if $m == $this_minute;
+ 	return 0 if $m < $this_minute;
+ 
+-	print "update $this_minute:$sum{sent}:$sum{received}:$sum{bounced}:$sum{rejected}:$sum{virus}:$sum{spam}\n" if $opt{verbose};
+-	RRDs::update $rrd, "$this_minute:$sum{sent}:$sum{received}:$sum{bounced}:$sum{rejected}" unless $opt{'only-virus-rrd'};
+-	RRDs::update $rrd_virus, "$this_minute:$sum{virus}:$sum{spam}" unless $opt{'only-mail-rrd'};
++	print "update $this_minute:$sum{sent}:$sum{received}:$sum{bounced}:$sum{rejected}:$sum{virus}:$sum{spam}:$sum{greylisted}:$sum{delayed}\n" if $opt{verbose};
++	RRDs::update $rrd, "$this_minute:$sum{sent}:$sum{received}:$sum{bounced}:$sum{rejected}" unless $opt{'no-mail-rrd'};
++	RRDs::update $rrd_virus, "$this_minute:$sum{virus}:$sum{spam}" unless $opt{'no-virus-rrd'};
++	RRDs::update $rrd_greylist, "$this_minute:$sum{greylisted}:$sum{delayed}" unless $opt{'no-greylist-rrd'};
+ 	if($m > $this_minute+$rrdstep) {
+ 		for(my $sm=$this_minute+$rrdstep;$sm<$m;$sm+=$rrdstep) {
+-			print "update $sm:0:0:0:0:0:0 (SKIP)\n" if $opt{verbose};
+-			RRDs::update $rrd, "$sm:0:0:0:0" unless $opt{'only-virus-rrd'};
+-			RRDs::update $rrd_virus, "$sm:0:0" unless $opt{'only-mail-rrd'};
++			print "update $sm:0:0:0:0:0:0:0:0 (SKIP)\n" if $opt{verbose};
++			RRDs::update $rrd, "$sm:0:0:0:0" unless $opt{'no-mail-rrd'};
++			RRDs::update $rrd_virus, "$sm:0:0" unless $opt{'no-virus-rrd'};
++			RRDs::update $rrd_greylist, "$sm:0:0" unless $opt{'no-greylist-rrd'};
+ 		}
+ 	}
+ 	$this_minute = $m;
+@@ -887,6 +926,8 @@
+ 	$sum{rejected}=0;
+ 	$sum{virus}=0;
+ 	$sum{spam}=0;
++        $sum{greylisted}=0;
++        $sum{delayed}=0;
+ 	return 1;
+ }
+ 
+Index: mailgraph-1.14/mailgraph.cgi
+===================================================================
+--- mailgraph-1.14.orig/mailgraph.cgi	2012-02-28 08:20:54.000000000 +0100
++++ mailgraph-1.14/mailgraph.cgi	2012-02-28 09:54:03.000000000 +0100
+@@ -8,7 +8,7 @@
+ use RRDs;
+ use POSIX qw(uname);
+ 
+-my $VERSION = "1.14";
++my $VERSION = "1.14g";
+ 
+ my $host = (POSIX::uname())[1];
+ my $scriptname = 'mailgraph.cgi';
+@@ -16,9 +16,11 @@
+ my $points_per_sample = 3;
+ my $ypoints = 160;
+ my $ypoints_err = 96;
+-my $rrd = '/var/lib/mailgraph/mailgraph.rrd'; # path to where the RRD database is
+-my $rrd_virus = '/var/lib/mailgraph/mailgraph_virus.rrd'; # path to where the Virus RRD database is
+-my $tmp_dir = '/tmp/mailgraph'; # temporary directory where to store the images
++my $ypoints_grey = 96;
++my $rrd = '/var/lib/mailgraph/mailgraph.rrd'; # path to where the RRD database is
++my $rrd_virus = '/var/lib/mailgraph/mailgraph_virus.rrd'; # path to where the Virus RRD database is
++my $rrd_greylist = '/var/lib/mailgraph/mailgraph_greylist.rrd'; # path to where the Greylist RRD database is
++my $tmp_dir = '/var/lib/mailgraph'; # temporary directory where to store the images
+ 
+ my @graphs = (
+ 	{ title => 'Last Day',   seconds => 3600*24,        },
+@@ -34,6 +36,8 @@
+ 	bounced  => '000000',
+ 	virus    => 'DDBB00',
+ 	spam     => '999999',
++        greylisted => '999999',
++	delayed => '006400',
+ );
+ 
+ sub rrd_graph(@)
+@@ -151,6 +155,35 @@
+ 	);
+ }
+ 
++sub graph_grey($$)
++{
++        my ($range, $file) = @_;
++        my $step = $range*$points_per_sample/$xpoints;
++        rrd_graph($range, $file, $ypoints_grey,
++                "DEF:greylisted=$rrd_greylist:greylisted:AVERAGE",
++                "DEF:mgreylisted=$rrd_greylist:greylisted:MAX",
++                "CDEF:rgreylisted=greylisted,60,*",
++                "CDEF:dgreylisted=greylisted,UN,0,greylisted,IF,$step,*",
++                "CDEF:sgreylisted=PREV,UN,dgreylisted,PREV,IF,dgreylisted,+",
++                "CDEF:rmgreylisted=mgreylisted,60,*",
++                "AREA:rgreylisted#$color{greylisted}:Greylisted",
++                'GPRINT:sgreylisted:MAX:total\: %8.0lf msgs',
++                'GPRINT:rgreylisted:AVERAGE:avg\: %5.2lf msgs/min',
++                'GPRINT:rmgreylisted:MAX:max\: %4.0lf msgs/min\l',
++
++                "DEF:delayed=$rrd_greylist:delayed:AVERAGE",
++                "DEF:mdelayed=$rrd_greylist:delayed:MAX",
++                "CDEF:rdelayed=delayed,60,*",
++                "CDEF:ddelayed=delayed,UN,0,delayed,IF,$step,*",
++                "CDEF:sdelayed=PREV,UN,ddelayed,PREV,IF,ddelayed,+",
++                "CDEF:rmdelayed=mdelayed,60,*",
++                "LINE2:rdelayed#$color{delayed}:Delayed   ",
++                'GPRINT:sdelayed:MAX:total\: %8.0lf msgs',
++                'GPRINT:rdelayed:AVERAGE:avg\: %5.2lf msgs/min',
++                'GPRINT:rmdelayed:MAX:max\: %4.0lf msgs/min\l',
++        );
++}
++
+ sub print_html()
+ {
+ 	print "Content-Type: text/html\n\n";
+@@ -163,7 +196,7 @@
+ <title>Mail statistics for $host</title>
+ <meta http-equiv="Refresh" content="300" />
+ <meta http-equiv="Pragma" content="no-cache" />
+-<link rel="stylesheet" href="mailgraph.css" type="text/css" />
++<link rel="stylesheet" href="/mailgraph.css" type="text/css" />
+ </head>
+ <body>
+ HEADER
+@@ -180,6 +213,7 @@
+ 		print "<h2 id=\"G$n\">$graphs[$n]{title}</h2>\n";
+ 		print "<p><img src=\"$scriptname?${n}-n\" alt=\"mailgraph\"/><br/>\n";
+ 		print "<img src=\"$scriptname?${n}-e\" alt=\"mailgraph\"/></p>\n";
++		print "<img src=\"$scriptname?${n}-g\" alt=\"mailgraph\"/></p>\n";
+ 	}
+ 
+ 	print <<FOOTER;
+@@ -227,6 +261,11 @@
+ 			graph($graphs[$1]{seconds}, $file);
+ 			send_image($file);
+ 		}
++		elsif($img =~ /^(\d+)-g$/) {
++			my $file = "$tmp_dir/$uri/mailgraph_$1_grey.png";
++			graph_grey($graphs[$1]{seconds}, $file);
++			send_image($file);
++		}
+ 		elsif($img =~ /^(\d+)-e$/) {
+ 			my $file = "$tmp_dir/$uri/mailgraph_$1_err.png";
+ 			graph_err($graphs[$1]{seconds}, $file);
