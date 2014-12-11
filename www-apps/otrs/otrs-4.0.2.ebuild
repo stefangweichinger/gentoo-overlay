@@ -58,6 +58,7 @@ RDEPEND="${DEPEND}
 	dev-perl/Text-CSV_XS
 	dev-perl/TimeDate
 	dev-perl/XML-Parser
+	dev-perl/YAML-LibYAML
 
 	virtual/perl-MIME-Base64
 	>=virtual/perl-CGI-3.33
