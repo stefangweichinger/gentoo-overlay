@@ -21,6 +21,7 @@ SLOT="0"
 
 DEPEND=""
 RDEPEND="${DEPEND}
+	dev-perl/Apache-Reload
 	dev-perl/Archive-Zip
 	dev-perl/Authen-SASL
 	dev-perl/Crypt-PasswdMD5

@@ -1,3 +1,5 @@
+# early notes on how to manually upgrade otrs
+
 cd /var/lib/otrs/bin
 chmod +x otrs.SetPermissions.pl
 ./otrs.SetPermissions.pl /var/lib/otrs --otrs-user=otrs --web-user=apache --otrs-group=apache --web-group=apache
