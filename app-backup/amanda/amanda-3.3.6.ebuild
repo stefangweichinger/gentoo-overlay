@@ -147,6 +147,8 @@ src_prepare() {
 	# bug with glibc-2.16.0
 	sed -i -e '/gets is a security/d' "${S}"/gnulib/stdio.in.h
 
+    mv configure.in configure.ac  || die #426262
+
 	eautoreconf
 
 	# places for us to work in
