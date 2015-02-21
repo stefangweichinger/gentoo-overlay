@@ -135,6 +135,8 @@ pkg_setup() {
 src_unpack() {
 	# we do not want the perl src_unpack
 	default_src_unpack
+	cd "${S}"
+	epatch "${FILESDIR}"/amadmin-tape-days-3.3.diff
 }
 
 src_prepare() {

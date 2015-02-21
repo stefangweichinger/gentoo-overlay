@@ -1,0 +1,56 @@
+diff --git a/man/xml-source/amadmin.8.xml b/man/xml-source/amadmin.8.xml
+index 083ad4d..deadbeb 100644
+--- a/man/xml-source/amadmin.8.xml
++++ b/man/xml-source/amadmin.8.xml
+@@ -285,7 +285,7 @@ file, Amanda will treat it as a new disk during the next run.</para>
+   </varlistentry>
+ 
+   <varlistentry>
+-  <term><emphasis remap='B'>tape</emphasis></term>
++  <term><emphasis remap='B'>tape</emphasis> [ <option>--days</option> <replaceable>&lt;num&gt;</replaceable> ]</term>
+   <listitem>
+ <para>Display the tape(s) Amanda expects to write to during the next run.
+ See also
+@@ -300,7 +300,7 @@ levels.</para>
+   </listitem>
+   </varlistentry>
+   <varlistentry>
+-  <term><emphasis remap='B'>balance</emphasis> [ <option>--days</option> <replaceable>&lt;num&gt;</replaceable> ]<emphasis remap='B'></emphasis> <emphasis remap='I'></emphasis> <emphasis remap='I'></emphasis></term>
++  <term><emphasis remap='B'>balance</emphasis> [ <option>--days</option> <replaceable>&lt;num&gt;</replaceable> ]</term>
+   <listitem>
+ <para>Display the distribution of full backups throughout the dump schedule.</para>
+   </listitem>
+diff --git a/server-src/amadmin.c b/server-src/amadmin.c
+index 502c412..a5bc438 100644
+--- a/server-src/amadmin.c
++++ b/server-src/amadmin.c
+@@ -955,8 +955,8 @@ due(
+ 
+ void
+ tape(
+-    int		argc,
+-    char **	argv)
++    int		argc G_GNUC_UNUSED,
++    char **	argv G_GNUC_UNUSED)
+ {
+     int     nb_days = 1;
+     int     runtapes;
+@@ -965,6 +965,17 @@ tape(
+     int     skip;
+     int     nb_new_tape;
+ 
++    nb_days = opt_days;
++    if (opt_days == 0 || opt_days == -1) {
++       nb_days = 1;
++    }
++    if (nb_days < 1) {
++	g_printf(_("days must be an integer bigger than 0\n"));
++	return;
++     }
++    if (nb_days > 10000)
++	nb_days = 10000;
++
+     if(argc > 4 && strcmp(argv[3],"--days") == 0) {
+ 	nb_days = atoi(argv[4]);
+ 	if(nb_days < 1) {
+
