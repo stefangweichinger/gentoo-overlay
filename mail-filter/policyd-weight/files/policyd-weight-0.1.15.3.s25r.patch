@@ -1,0 +1,51 @@
+--- policyd-weight	2010-01-05 19:38:51.290899629 +0100
++++ policyd-weight.pl	2010-01-05 19:42:13.483399748 +0100
+@@ -504,6 +504,7 @@
+ my @helo_ip_in_client_subnet         = (0,         -1.2  );
+ my @helo_ip_in_cl16_subnet           = (0,         -0.41 );
+ my @client_seems_dialup_score        = (3.75,       0    );
++my @client_s25r_score                = (1.75,      -0.35 ); # http://gabacho.reto.jp/en/anti-spam/
+ my @from_multiparted                 = (1.09,       0    );
+ my @from_anon                        = (1.17,       0    );
+ my @bogus_mx_score                   = (2.1,        0    );
+@@ -1842,6 +1843,7 @@
+     my $dont_cache              = 0;
+     my $do_client_from_check    = 0;
+     my $client_seems_dialup     = 0;
++    my $client_s25r             = 0;
+     my $in_dyn_bl               = 0;
+     my $helo_seems_dialup       = 0;
+     my $rhsbl_penalty           = 0;
+@@ -2471,6 +2473,32 @@
+         }
+     }
+ 
++## Reverse IP == S25R check ###############################################
++
++    foreach my $revhost (@reverse_ips)
++    {
++        if ($revhost =~ /^(unknown$|[^.]*\d[^\d.]+\d.*\.|[^.]*\d{5}|([^.]+\.)?\d[^.]*\.[^.]+\..+\.[a-z]|[^.]*\d\.[^.]*\d\-\d|[^.]*\d\.[^.]*\d\.[^.]+\..+\.|(dhcp|dialup|ppp|[achrsvx]?dsl)[^.]*\d)/i)
++        {
++            $client_s25r         = 1;
++            last;
++        }
++    }
++
++    if ($client_s25r == 0 && $client_s25r_score[1] != 0)
++    {
++        $total_dnsbl_score  += $client_s25r_score[1];
++        $rate               += $client_s25r_score[1];
++        $RET                .= ' NOT_CL_S25R=' .
++                               $client_s25r_score[1]; 
++    }
++    elsif ($client_s25r == 1 && $client_s25r_score[0] != 0)
++    {
++        $total_dnsbl_score  += $client_s25r_score[0];
++        $rate               += $client_s25r_score[0];
++        $RET                .= ' CL_S25R=' .
++                               $client_s25r_score[0]; 
++    }
++
+ ## Reverse IP == HELO check ###################################################
+     $found = 0;
+     my $rev_processed = 0;

@@ -1,0 +1,203 @@
+--- policyd-weight	2009-08-25 15:40:25.897714268 +0000
++++ policyd-weight.geo	2009-08-25 16:01:57.347762290 +0000
+@@ -73,6 +73,7 @@
+ use IO::Socket::INET;
+ use IO::Socket::UNIX;
+ use IO::Select;
++use Geo::IP;
+ use Config;
+ use POSIX;
+ use Carp qw(cluck longmess);
+@@ -351,6 +352,57 @@
+                                     # If ON request that ALL clients are only
+                                     # checked against RBLs
+ 
++
++# ----------------------------------------------------------
++#                 Geo::IP integration
++# ----------------------------------------------------------
++
++## GeoIP score by country
++my @geoip_score = (
++#    ISO-3166-2 
++#    COUNTRY
++#    CODE,       NO MATCH,  MATCH,   LOG NAME
++     # 'FR',       0.00,    -1.00,   'FRANCE',
++     # 'CN',       0.00,     3.00,   'CHINA',
++     # 'TW',       0.00,     2.00,   'TAIWAN',
++     # 'KR',       0.00,     3.00,   'KOREA',
++     # 'HK',       0.00,     2.00,   'HONGKONG',
++     # add as much as you need, adjust the score accordingly
++     # codes: http://www.iso.org/iso/fr/prods-services/iso3166ma/02iso-3166-code-lists/list-en1.html
++);
++
++## GeoIP score by continent
++my @continent_score = (
++#    CONTINENT,  NO MATCH,  MATCH,   LOG NAME
++     # 'AF',       0.00,     0.50,   'Africa',
++     # 'AS',       0.00,     2.00,   'Asia',
++     # 'EU',      -1.00,     0.00,   'Europe',
++     # 'NA',       0.00,     1.00,   'North_America',
++     # 'OC',       0.00,     0.50,   'Oceania',
++     # 'SA',       0.00,     0.50,   'South_America',
++);
++
++## GeoIP score by distance in Km to your latitude/longitude (see below)
++## NOTE: Values are computed CUMULATIVE!
++my @distance_score = (
++#    DISTANCE
++#    IN KM,      NO MATCH,  MATCH,   LOG NAME
++     # '1000',    -0.125,    0.125,  '1000_KM',
++     # '2000',    -0.250,    0.250,  '2000_KM',
++     # '4000',    -0.500,    0.500,  '4000_KM',
++     # '8000',    -1.000,    1.000,  '8000_KM',
++     # '16000',   -2.000,    2.000,  '16000_KM',
++);
++
++my $my_geo_latitude = undef;    # Type in here your latitude and longitude. Use
++my $my_geo_longitude = undef;   # http://www.maxmind.com/ to get the values.
++
++# my $pi = 4*atan2(1,1);
++# my $pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819644288109756659334461284756482337867831652712019091456485669234603486104543266482133936072602491412737245870066063155881748815209209628292540917153643678925903600113305305488204665213841469519415116094330572703657595919530921861173819326117931051185480744623799627495673518857527248912279381830119491298336733624406566430860213949463952247371907021798609437027705392171762931767523846748184676694051320005681271452635608277857713427577896091736371787214684409012249534301465495853710507922796892589235420199561121290219608640344181598136297747713099605187072113499999983729780499510597317328160963185950244594553469083026425223082533446850352619311881710100031378387528865875332083814206171776691473035982534904287554687311595628638823537875937519577818577805321712268066130019278766111959092164201989; # For the crazy people among us
++my $pi = 3.1415926535897932384626433832795;
++
++# ----------------------------------------------------------
++
+ my @dnsbl_checks_only_regexps = (
+     # qr/[^.]*(exch|smtp|mx|mail).*\..*\../,
+     # qr/yahoo.com$/
+@@ -927,6 +979,15 @@
+     }
+ }
+ 
++# Geo::IP object(s)
++our $geoip = Geo::IP->new(GEOIP_STANDARD) or die $!;
++our $geoipcity = undef;
++if( -f "/usr/local/share/GeoIP/GeoLiteCity.dat") {
++    $geoipcity = Geo::IP->open("/usr/local/share/GeoIP/GeoLiteCity.dat",GEOIP_STANDARD) or die $!;
++} elsif( -f "/usr/share/GeoIP/GeoLiteCity.dat") {
++    $geoipcity = Geo::IP->open("/usr/share/GeoIP/GeoLiteCity.dat",GEOIP_STANDARD) or die $!;
++}
++
+ # ----------------------------------------------------------
+ #                 main
+ # ----------------------------------------------------------
+@@ -1854,6 +1915,94 @@
+     
+     my $rtime                   = time; # timestamp of policy request
+ 
++## Geo::IP check ##############################################################
++    my $i;
++    if (($rate < $REJECTLEVEL) && ($ip ne ""))
++    {
++        if (scalar(@geoip_score) > 0)
++        {
++            my $country = $geoip->country_code_by_addr("$ip");
++            if(defined($country))
++            {
++				mylog(info=>"GeoIP: country: ".$country) if $DEBUG;
++                for($i=0; $i < @geoip_score; $i += 4)
++                {
++                    if($country eq $geoip_score[$i])
++                    {
++                        my $score = $geoip_score[$i+2];
++                        if ($score != 0) {
++                            $RET      .= ' IN_'.$geoip_score[$i+3].'='.$score;
++                            $rate     += $score;
++                        }
++                    }
++                    else
++                    {
++                        my $score = $geoip_score[$i+1];
++                        if ($score != 0) {
++                            $RET      .= ' NOT_IN_'.$geoip_score[$i+3].'='.$score;
++                            $rate     += $score;
++                        }
++                    }
++                }
++            }
++        }
++
++        if (defined($geoipcity)) {
++            if ((scalar(@continent_score) > 0) || (scalar(@distance_score) > 0))
++            {
++                my $geoiprecord = $geoipcity->record_by_addr($ip);
++                if(defined($geoiprecord))
++                {
++                    for($i=0; $i < @continent_score; $i += 4)
++                    {
++                        if($geoiprecord->continent_code eq $continent_score[$i])
++                        {
++                            my $score = $continent_score[$i+2];
++                            if ($score != 0) {
++                                $RET      .= ' IN_'.$continent_score[$i+3].'='.$score;
++                                $rate     += $score;
++                            }
++                        }
++                        else
++                        {
++                            my $score = $geoip_score[$i+1];
++                            if ($score != 0) {
++                                $RET      .= ' NOT_IN_'.$continent_score[$i+3].'='.$score;
++                                $rate     += $score;
++                            }
++                        }
++                    }
++
++                    if ((scalar(@distance_score) > 0) && (defined($my_geo_latitude)) && (defined($my_geo_longitude)))
++                    {
++                        my $geo_distance = distance_in_km($my_geo_latitude,$my_geo_longitude,$geoiprecord->latitude,$geoiprecord->longitude);
++                        for($i=0; $i < @distance_score; $i += 4)
++                        {
++                            if($geo_distance >= $distance_score[$i])
++                            {
++                                my $score = $distance_score[$i+2];
++                                if ($score != 0) {
++                                    $RET      .= ' ABOVE_'.$distance_score[$i+3].'='.$score;
++                                    $rate     += $score;
++                                }
++                            }
++                            else
++                            {
++                                my $score = $geoip_score[$i+1];
++                                if ($score != 0) {
++                                    $RET      .= ' BELOW_'.$distance_score[$i+3].'='.$score;
++                                    $rate     += $score;
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++
++
+ ## DNSBL check ################################################################
+     my $i;
+     my $dnsbl_hits = 0;
+@@ -3845,3 +3994,23 @@
+ }
+ 
+ 
++#------------------------------------------------------------------------------
++#        Helper functions for Geo::IP distance calculation
++#------------------------------------------------------------------------------
++sub deg_to_rad { ($_[0]/180) * $pi }
++sub rad_to_deg { ($_[0]/$pi) * 180 }
++sub asin { atan2($_[0], sqrt(1 - $_[0] * $_[0])) }
++sub acos { atan2( sqrt(1 - $_[0] * $_[0]), $_[0] ) }
++sub tan { sin($_[0]) / cos($_[0]) }
++sub atan { atan2($_[0],1) };
++sub distance_in_km {
++    my $radius     = 6371.0;        # Km
++    my $latitude1  = shift @_;
++    my $longitude1 = shift @_;
++    my $latitude2  = shift @_;
++    my $longitude2 = shift @_;
++    my $distance   = acos(sin(deg_to_rad($latitude1))*sin(deg_to_rad($latitude2))+cos(deg_to_rad($latitude1))*cos(deg_to_rad($latitude2))*cos(deg_to_rad($longitude2-$longitude1)))*$radius;
++    return $distance;
++}
++#------------------------------------------------------------------------------
++

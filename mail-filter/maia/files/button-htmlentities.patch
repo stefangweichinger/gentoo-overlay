@@ -1,0 +1,131 @@
+diff -ru maia-1.0.1/php/settings.php maia-1.0.1-agh/php/settings.php
+--- maia-1.0.1/php/settings.php	2006-02-13 02:37:50.000000000 +0100
++++ maia-1.0.1-agh/php/settings.php	2006-07-17 18:18:51.000000000 +0200
+@@ -121,8 +121,8 @@
+     
+     // Pressed the "Update This Address' Settings" button or the
+     // "Update ALL Addresses' Settings" button
+-    if ($button == $lang['button_update_address'] ||
+-        $button == $lang['button_update_all_addresses']) {
++    if (htmlentities($button) == $lang['button_update_address'] ||
++        htmlentities($button) == $lang['button_update_all_addresses']) {
+ 
+         if (isset($_POST["policy"])) { // actually, I think we prefer not to use this, in favor of what's in the 
+             $policy_id = trim($_POST["policy"]); // users.policy_id
+@@ -310,7 +310,7 @@
+                                     "spam_kill_level = ? " .
+                   "WHERE id = ?";
+ 
+-        if ($button == $lang['button_update_all_addresses']) {
++        if (htmlentities($button) == $lang['button_update_all_addresses']) {
+             $select = "SELECT policy_id FROM users WHERE maia_user_id = ? ";
+             $sth = $dbh->query($select, array($euid));
+             while ($row = $sth->fetchrow()) {
+@@ -356,7 +356,7 @@
+         $message = $lang['text_settings_updated'];
+ 
+     // Pressed the "Update Miscellaneous Settings" button
+-    } elseif ($button == $lang['button_update_misc']) {
++    } elseif (htmlentities($button) == $lang['button_update_misc']) {
+ 
+         if (isset($_POST["reminder"])) {
+             $reminder = (trim($_POST["reminder"]) == "yes" ? "Y" : "N");
+@@ -429,7 +429,7 @@
+ 
+ 
+     // Pressed the "Add E-Mail Address" button
+-    } elseif ($button == $lang['button_add_email_address']) {
++    } elseif (htmlentities($button) == $lang['button_add_email_address']) {
+ 
+         if (isset($_POST["login"])) {
+             $login = trim($_POST["login"]);
+@@ -477,7 +477,7 @@
+         }
+ 
+     // Pressed the "Update Login Credentials" button
+-    } elseif ($button == $lang['button_change_login_info'] && $auth_method == "internal") {
++    } elseif (htmlentities($button) == $lang['button_change_login_info'] && $auth_method == "internal") {
+ 
+         if (isset($_POST["new_login_name"])) {
+             $new_login = trim($_POST["new_login_name"]);
+diff -ru maia-1.0.1/php/wblist.php maia-1.0.1-agh/php/wblist.php
+--- maia-1.0.1/php/wblist.php	2006-02-12 21:49:19.000000000 +0100
++++ maia-1.0.1-agh/php/wblist.php	2006-07-17 18:18:51.000000000 +0200
+@@ -112,7 +112,7 @@
+ 
+    // User pressed the "Add to List" button to add an address to the
+    // whitelist or blacklist.
+-   if ($addaddress == $lang['button_add_to_list'])
++   if (htmlentities($addaddress) == htmlentities($lang['button_add_to_list']))
+    {
+       if ($newaddr != "") {
+       	 $list = trim($_POST["list"]);
+@@ -122,7 +122,7 @@
+ 
+    // User pressed the "Update" button to modify the whitelist/blacklist
+    // settings.
+-   elseif ($addchange == $lang['button_update'])
++   elseif (htmlentities($addchange) == htmlentities($lang['button_update']))
+    {
+    	  $message = $lang['text_lists_updated'];
+       foreach($_POST as $varname => $value)
+diff -ru maia-1.0.1/php/welcome.php maia-1.0.1-agh/php/welcome.php
+--- maia-1.0.1/php/welcome.php	2006-02-12 21:49:19.000000000 +0100
++++ maia-1.0.1-agh/php/welcome.php	2006-07-17 18:18:52.000000000 +0200
+@@ -107,7 +107,7 @@
+       $maxitemid = 0;
+    }
+    
+-   if ($button == $lang['button_delete_all_items'])
++   if (htmlentities($button) == $lang['button_delete_all_items'])
+    {
+       $select = "SELECT mail_id FROM maia_mail_recipients " .
+                 "WHERE (type = 'S' " .
+@@ -128,7 +128,7 @@
+    }
+    
+    
+-   if ($button == $lang['button_change_protection'] && isset($_POST['protection_level'])) {
++   if (htmlentities($button) == $lang['button_change_protection'] && isset($_POST['protection_level'])) {
+     $select = "SELECT policy_id FROM users WHERE maia_user_id = ?"; 
+     $sth = $dbh->query($select, $euid);
+  
+diff -ru maia-1.0.1/php/xdomainsettings.php maia-1.0.1-agh/php/xdomainsettings.php
+--- maia-1.0.1/php/xdomainsettings.php	2006-02-12 21:49:19.000000000 +0100
++++ maia-1.0.1-agh/php/xdomainsettings.php	2006-07-17 18:18:52.000000000 +0200
+@@ -87,7 +87,7 @@
+     require_once ("./locale/$display_language/domainsettings.php"); // shared with domainsettings.php
+ 
+     require_once ("smarty.php");
+-    
++
+     if (isset($_POST["domain_id"])) {
+         $domain_id = trim($_POST["domain_id"]);
+     } else {
+@@ -113,7 +113,7 @@
+     }
+ 
+     // Pressed the "Update This Domain's Settings" button
+-    if ($button == $lang['button_update_domain']) {
++     if ( htmlentities($button) == $lang['button_update_domain']) {
+ 
+         $select = "SELECT enable_charts, reminder_threshold_count, " .
+                          "enable_spamtraps " .
+@@ -335,7 +335,7 @@
+ 
+         $message = $lang['text_settings_updated'];
+     // Pressed the "Revoke Administrator Privileges" button
+-    } elseif ($super && ($button == $lang['button_revoke'])) {
++    } elseif ($super && (htmlentities($button) == $lang['button_revoke'])) {
+ 
+         // Register the full set of POST variables.
+         foreach($_POST as $varname => $value)
+@@ -379,7 +379,7 @@
+         $message = $lang['text_admins_revoked'];
+ 
+     // Pressed the "Grant Administrator Privileges" button
+-    } elseif ($super && ($button == $lang['button_grant'])) {
++    } elseif ($super && (htmlentities($button) == $lang['button_grant'])) {
+ 
+         // Note that $admins is an array
+         if (isset($_POST["administrators"])) {

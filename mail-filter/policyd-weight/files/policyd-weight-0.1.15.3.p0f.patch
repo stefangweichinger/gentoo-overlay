@@ -1,0 +1,134 @@
+--- policyd-weight	2009-08-25 17:37:37.777762086 +0000
++++ policyd-weight.p0f	2009-08-25 17:45:14.407819461 +0000
+@@ -351,6 +351,36 @@
+                                     # If ON request that ALL clients are only
+                                     # checked against RBLs
+ 
++# ----------------------------------------------------------
++#               p0f/p0f-analyzer.pl integration
++# ----------------------------------------------------------
++# p0f fingerprinting, needs p0f-analyzer.pl created by Mark Martinec / amavisd-new
++
++my $P0F_ADDRESS = "";            # p0f-analyzer.pl address, ie. "127.0.0.1"
++                                 # DEFAULT: "" (p0f disabled)
++
++my $P0F_PORT = 2345;             # Port p0f is listening
++
++my @p0f_score = (
++#    REGEX,                                  SCORE,    LOG NAME
++    #'^Windows (2000 SP[0-9\+]+, )?XP',       2.00,    'P0F_WIN_XP',
++    #'^Windows 9(5|8)',                       2.50,    'P0F_WIN_9X',
++    #'^Windows 3\.',                          2.50,    'P0F_WIN_3X',
++    #'^Windows NT( 4\.0)?',                   1.50,    'P0F_WIN_NT4',
++    #'^PocketPC',                             1.50,    'P0F_WIN_POCKETPC',
++    #'^Windows 2003',                         0.75,    'P0F_WIN_2003',
++    #'^Windows( 2000)?( SP[0-9\+]+)?',        0.75,    'P0F_WIN_2000',
++    #'^Windows',                              1.50,    'P0F_WIN',
++    #'^Novell',                              -1.00,    'P0F_NOVELL',
++    #'^Linux',                               -1.00,    'P0F_LINUX',
++    #'^UNKNOWN',                              1.50,    'P0F_UNKNOWN',
++    #'^((Open|Net|Free)?BSD|Solaris|(Sun|Mac)OS|AIX|HP\-UX|IRIX|Tru64|OpenVMS)',   -1.50,    'P0F_UNIX',
++    #'^(CacheFlow|NetCache|Proxyblocker|NetApp|Redline|PowerApp|Google Wireless)',  0.75,    'P0F_CACHE',
++    #'^(Eagle Secure|Forti(Net|Gate)|ExtremeWare|Clavister|Checkpoint)',           -0.25,    'P0F_FIREWALL',
++    #'^.',                                    2.00,    'P0F_OTHER',
++);
++# ----------------------------------------------------------
++
+ my @dnsbl_checks_only_regexps = (
+     # qr/[^.]*(exch|smtp|mx|mail).*\..*\../,
+     # qr/yahoo.com$/
+@@ -2717,6 +2747,26 @@
+         }
+     }
+ 
++## p0f check ##################################################################
++    my $p0f_total_score;
++    if (($rate < $REJECTLEVEL) && ($P0F_ADDRESS ne ""))
++    {
++        my $os = p0f_lookup($ip);
++
++        if($os ne "")
++        {
++            for($i=0;$i < @p0f_score; $i += 3)
++            {
++                if ($os =~ /$p0f_score[$i]/)
++                {
++                    $p0f_total_score = myrnd($p0f_score[$i+1]);
++                    $RET .= ' '.$p0f_score[$i+2].'=' . $p0f_total_score;
++                    $rate = myrnd($rate + $p0f_total_score);
++                    last;
++                }
++            }
++        }
++    }
+ 
+ ###############################################################################
+ # parse and store results, do some cleanup, return results
+@@ -3604,6 +3654,67 @@
+         return(rbl_lookup(@bu)); # return Net::DNS result
+ }
+ 
++# Query p0f-analyzer.pl for address, returns
++# response or empty on error. Some code
++# borrowed from amavisd-new / Mark Martinec
++sub p0f_lookup
++{
++    my $query = shift(@_);
++
++    mylog(info=>"p0f_lookup: looking up $query") if $DEBUG;
++
++    my $sock = IO::Socket::INET->new(Type=>SOCK_DGRAM, Proto=>'udp');
++    if(!$sock)
++    {
++        mylog(warning=>"p0f_lookup: could not create udp socket: $!");
++        return "";
++    }
++
++    my $hisiaddr = inet_aton($P0F_ADDRESS);
++    if(!$hisiaddr)
++    {
++        mylog(warning=>"p0f_lookup: could not resolve address: $P0F_ADDRESS");
++        return "";
++    }
++
++    my $hispaddr = scalar(sockaddr_in($P0F_PORT, $hisiaddr));
++    my $nonce = int(rand(1000000000));
++    unless(defined($sock->send("$query $nonce", 0, $hispaddr)))
++    {
++        mylog(warning=>"p0f_lookup: send failed: $!");
++        return "";
++    }
++
++    my($resp, $rin, $rout, $nfound);
++    $rin = ""; $resp = "";
++    vec($rin,fileno($sock),1) = 1;
++
++    while($nfound = select($rout=$rin,undef,undef,0.1))
++    {
++        my $inbuf;
++        my $rv = $sock->recv($inbuf,1024,0);
++        unless(defined($rv))
++        {
++            mylog(warning=>"p0f_lookup: error receiving: $!");
++            return "";
++        }
++        if($inbuf =~ /^([^ ]*) ([^ ]*) (.*)\015\012\z/)
++        {
++            my($r_query,$r_nonce,$r_resp) = ($1,$2,$3);
++            if(($r_query eq $query) && ($r_nonce eq $nonce)) { $resp = $r_resp };
++        }
++        mylog(info=>"p0f_lookup: success: $query => \"$resp\"") if $DEBUG;
++    }
++    unless(defined($nfound))
++    {
++        mylog(warning=>"p0f_lookup: socket select failed: $!");
++        return "";
++    }
++
++    return $resp;
++}
++
++
+ sub conf_check
+ {
+     my $who = shift;

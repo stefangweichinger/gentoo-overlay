@@ -1,0 +1,11 @@
+--- policyd-weight	2009-08-25 16:35:51.687794353 +0000
++++ policyd-weight.fix	2009-08-25 16:36:10.917927068 +0000
+@@ -2832,7 +2832,7 @@
+     my $sender = shift(@_) || '';
+     my $domain = shift(@_) || '';
+ 
+-    $! = '';
++    $! = 0;
+     $@ = ();
+     if( (!($csock)) || ($csock && (!($csock->connected))) )
+     {

@@ -1,0 +1,57 @@
+To complete installation, you must
+
+MySQL:
+1. Create the needed MySQL database and tables and user:
+     mysql -u root -p < ${MY_SQLSCRIPTSDIR}/mysql/${PVR}_create.sql
+2. Reload MySQL:
+     /etc/init.d/mysql restart
+3. Change the password for the mail user! Inital password is
+   "secret" (without the qotes).
+
+ *  To change the password issue the following SQL commands:
+ *    SET PASSWORD FOR 'mail'@'localhost' = PASSWORD('newpwd');
+ *    FLUSH PRIVILEGES;
+ *     
+ *  Replace host_name with the name of the server host and replace
+ *  newpwd with your new password.
+ *
+ *  Initial passwords for MySQL:
+ *  User	: mail
+ *  Password	: secret
+ *  Role	: MySQL database user
+ *
+ *  User	: admin
+ *  Password	: test
+ *  Role	: Superuser (for web interface)
+ *
+ *  User	: cyrus
+ *  Password	: secret
+ *  Role	: Domain user
+
+
+PostgreSQL:
+1. Create the needed PgSQL database and tables and user:
+     psql -U postgres -W -h 127.0.0.1 -f ${MY_SQLSCRIPTSDIR}/pgsql/${PVR}_create.sql
+2. Reload PgSQL:
+     /etc/init.d/postgresql restart
+3. Change the password for the mail user! Inital password is
+   "secret" (without the qotes).
+
+   Initial passwords for PgSQL:
+   User		: mail
+   Password	: secret
+   Role		: PgSQL database user
+
+
+Config:
+   Enter the new password you set above in the configuration file 
+   at ${MY_INSTALLDIR}/config/conf.php
+   The files also provides some other options that you may or may not wish to modify
+   to suit your mail setup.
+
+   
+Read the documentation at:
+   http://www.delouw.ch/linux/Postfix-Cyrus-Web-cyradm-HOWTO/html/index.html
+
+
+Finally, point your browser to http://localhost/${PN}/.

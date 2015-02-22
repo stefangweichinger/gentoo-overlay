@@ -1,0 +1,46 @@
+#!/sbin/runscript
+
+GREYGRAPH_CONFIG="/etc/conf.d/greygraph"
+NAME="greygraph"
+DAEMON="/usr/sbin/greygraph"
+PID_FILE="/var/run/greygraph.pid"
+RRD_DIR="/var/lib/greygraph"
+
+if [ -f $GREYGRAPH_CONFIG ]; then
+  . $GREYGRAPH_CONFIG
+else
+  exit 0
+fi  
+
+test -x $DAEMON || exit 0
+
+start() {
+    	ebegin "Starting Greylisting Statistics"
+	# read mail log messages somewhere other than /var/log/syslog?
+	[[ -n "${GG_LOGFILE}" ]] && GG_DAEMON_OPTS="${GG_DAEMON_OPTS} -l ${GG_LOGFILE}"
+
+	# create /var/run/greygraph if necessary
+	if [ ! -d  /var/run/greygraph ] ; then
+		checkpath -q -d -o ggraph:adm -m 0775 /var/run/greygraph || return 1
+	fi
+
+	UMASK=$(umask)
+	umask ${GG_DAEMON_UMASK:-0077}
+	start-stop-daemon --start \
+		--name greygraph \
+		--user "${GG_DAEMON_UID}:${GG_DAEMON_GID}" \
+		--name greygraph \
+		--pidfile ${GG_DAEMON_PID} \
+		--exec ${DAEMON} -- -v --daemon \
+		--daemon-log="${GG_DAEMON_LOG}" \
+		--daemon-pid="${GG_DAEMON_PID}" \
+		--daemon-rrd=/var/lib/greygraph ${GG_DAEMON_OPTS}
+	eend $?
+	umask "${UMASK}"
+
+}
+stop() {
+	ebegin "Stopping Greylisting Statistics"
+	start-stop-daemon --stop --quiet --pidfile "${GG_DAEMON_PID}"
+	eend $?
+}
