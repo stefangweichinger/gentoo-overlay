@@ -4,18 +4,13 @@
 
 EAPI="5"
 
-inherit depend.php eutils webapp user
+inherit depend.php eutils webapp user git-2
 
 DESCRIPTION="Maia Mailguard is a Web based frontend to control virus scanners and spam filters"
 HOMEPAGE="https://github.com/technion/maia_mailguard"
 
-if [[ "${PV}" == "9999" ]] ; then
-	    inherit git-2
-				EGIT_REPO_URI="https://github.com/technion/maia_mailguard.git"
-			    KEYWORDS=""
-			else
-					SRC_URI="http://www.maiamailguard.com/files/${PN}-${PV}.tar.gz"
-				fi
+EGIT_REPO_URI="git://github.com/technion/maia_mailguard.git"
+SRC_URI=""
 
 MY_PV=${PV/a//}
 MY_S=${WORKDIR}/${PN}-${MY_PV}
@@ -80,20 +75,10 @@ pkg_setup() {
 	then
 		require_php_with_use wddx
 	fi
-	#webapp_pkg_setup
+	webapp_pkg_setup
 	enewgroup amavis
 	enewuser amavis -1 -1 /var/lib/amavis amavis
 }
-
-
-src_unpack() {
-	unpack ${A}
-
-	cd ${WORKDIR}/fr
-	epatch ${FILESDIR}/fr-070107.patch
-	cd ${MY_S}
-}
-
 
 src_install() {
 	webapp_src_preinst
@@ -106,7 +91,7 @@ src_install() {
 	cd ${MY_S}
 	exeinto /usr/sbin
 	exeopts -oamavis -gamavis -m0700
-	doexe amavisd-maia
+	doexe maiad
 
 	# Config files
 	cd ${MY_S}
@@ -114,26 +99,26 @@ src_install() {
 	insinto /etc
 	cp maia.conf.dist maia.conf
 	doins maia.conf
-	dosed "s:^\$script_dir = [^;]*;:\$script_dir = \"/usr/bin\";: "\
+	sed "s:^\$script_dir = [^;]*;:\$script_dir = \"/usr/bin\";: "\
 		/etc/maia.conf
-	dosed "s:^\$#$key_file = [^;]*;:\$#key_file = \"/var/amavis/maia.key\";: "\
+	sed "s:^\$#$key_file = [^;]*;:\$#key_file = \"/var/amavis/maia.key\";: "\
 		/etc/maia.conf
 	cp amavisd.conf.dist amavisd.conf
-	doins amavisd.conf
-	dosed "s:/var/amavisd:/var/amavis:g" /etc/amavisd.conf
-	dosed "s:^\$MYHOME   = [^;]*;:\$MYHOME   = \"/var/amavis\";  : "\
+	doins maia.conf
+	sed "s:/var/amavisd:/var/amavis:g" /etc/amavisd.conf
+	sed "s:^\$MYHOME   = [^;]*;:\$MYHOME   = \"/var/amavis\";  : "\
 		/etc/amavisd.conf
-	dosed "s:^# \$pid_file  = [^;]*;:\$pid_file = \"/var/run/amavis/amavisd.pid\";  : "\
+	sed "s:^# \$pid_file  = [^;]*;:\$pid_file = \"/var/run/amavis/amavisd.pid\";  : "\
 		/etc/amavisd.conf
-	dosed "s:^# \$lock_file = [^;]*;:\$lock_file = \"/var/run/amavis/amavisd.lock\";  : "\
+	sed "s:^# \$lock_file = [^;]*;:\$lock_file = \"/var/run/amavis/amavisd.lock\";  : "\
 		/etc/amavisd.conf
-	dosed "s:/var/amavisd/clamd.sock:/var/run/clamav/clamd.sock:g" /etc/amavisd.conf
+	sed "s:/var/amavisd/clamd.sock:/var/run/clamav/clamd.sock:g" /etc/amavisd.conf
 
 	if [ "$(dnsdomainname)" = "(none)" ] ; then
-		dosed "s:^#\\?\\\$mydomain[^;]*;:\$mydomain = '$(hostname)';:" \
+		sed "s:^#\\?\\\$mydomain[^;]*;:\$mydomain = '$(hostname)';:" \
 			/etc/amavisd.conf
 	else
-		dosed "s:^#\\?\\\$mydomain[^;]*;:\$mydomain = '$(dnsdomainname)';:" \
+		sed "s:^#\\?\\\$mydomain[^;]*;:\$mydomain = '$(dnsdomainname)';:" \
 			/etc/amavisd.conf
 	fi
 
@@ -144,7 +129,7 @@ src_install() {
 	keepdir /var/amavis/templates
 
 	cd ${MY_S}
-	dodoc LICENSE README maia-mysql.sql maia-pgsql.sql
+	dodoc LICENSE.txt README.md maia-mysql.sql maia-pgsql.sql
 	# webapp-config is not yet ready to deal with this
 	# webapp_sqlscript mysql 	maia-mysql.sql
 	# webapp_sqlscript postgres	maia-pgsql.sql
