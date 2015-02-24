@@ -1,0 +1,38 @@
+diff --exclude=.svn -u maia-1.0.1/php/smarty.php trunk/php/smarty.php
+--- maia-1.0.1/php/smarty.php	2006-02-12 21:27:05.000000000 +0100
++++ trunk/php/smarty.php	2006-05-06 14:39:46.000000000 +0200
+@@ -85,7 +85,7 @@
+     class ThemeSmarty extends Smarty {
+         var $_basedir = '';
+         
+-        function ThemeSmarty($theme = 'default') {
++        function ThemeSmarty($theme = 'default', $spath = '') {
+             $this->Smarty();
+             $this->_basedir = 'themes/'.$theme.'/';
+             $basedir = 'bla';
+@@ -94,7 +94,11 @@
+             $this->config_dir = $this->_basedir.'config';
+             $this->cache_dir = $this->_basedir.'cached/';
+             $this->caching = false;
+-            $this->plugins_dir = array($this->_basedir.'code/', "Smarty/plugins");
++            if (!empty($spath)) {
++                $this->plugins_dir = $smarty->plugins_dir[] = $spath . '/plugins';
++            } else {
++                $this->plugins_dir = array($this->_basedir.'code/', "Smarty/plugins");
++            }
+             $this->assign('template_dir', 'themes/'.$theme.'/');
+         }
+         
+@@ -163,7 +167,11 @@
+     
+     // create new smarty-instance
+     //$smarty =& new ThemeSmarty('default');
+-    $smarty =& new ThemeSmarty($path);
++    if (isset($smarty_path)) {
++        $smarty =& new ThemeSmarty($path, $smarty_path);
++    } else {
++        $smarty =& new ThemeSmarty($path);
++    }
+     
+     $include = $smarty->getBaseDir()."code/smarty.php";
+     if(file_exists($include) && is_readable($include)) {

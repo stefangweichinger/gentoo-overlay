@@ -144,6 +144,8 @@ src_prepare() {
 	# bug with glibc-2.16.0
 	sed -i -e '/gets is a security/d' "${S}"/gnulib/stdio.in.h
 
+    mv configure.in configure.ac  || die #426262
+
 	eautoreconf
 
 	# places for us to work in
@@ -176,6 +178,7 @@ src_prepare() {
 		sed -i -e 's:^\(my $amandahomedir\)=.*:\1 = $localstatedir;:' \
 			server-src/am{addclient,serverconfig}.pl || die
 	fi
+
 }
 
 src_configure() {
@@ -275,7 +278,7 @@ src_configure() {
 	myconf="${myconf} `use_enable nls`"
 
 	# Bug #296634: Perl location
-	perlinfo
+	perl_set_version
 	myconf="${myconf} --with-amperldir=${VENDOR_LIB}"
 
 	# Bug 296633: --disable-syntax-checks

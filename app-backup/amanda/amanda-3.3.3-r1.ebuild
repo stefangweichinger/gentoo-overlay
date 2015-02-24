@@ -41,9 +41,10 @@ DEPEND="${RDEPEND}
 	>=app-text/docbook-xsl-stylesheets-1.72.0
 	app-text/docbook-xml-dtd
 	dev-libs/libxslt
+	perl? ( dev-lang/swig )
 	"
 
-IUSE="curl gnuplot ipv6 kerberos minimal nls readline s3 samba systemd xfs"
+IUSE="curl gnuplot ipv6 kerberos minimal nls readline s3 samba systemd xfs perl"
 
 MYFILESDIR="${T}/files"
 ENVDIR="/etc/env.d"
@@ -131,7 +132,10 @@ pkg_setup() {
 
 src_unpack() {
 	# we do not want the perl src_unpack
-	base_src_unpack
+	default_src_unpack
+	cd "${S}"
+	epatch "${FILESDIR}"/struct-swg.diff
+	epatch "${FILESDIR}"/swig-perlcode.diff
 }
 
 src_prepare() {
@@ -142,6 +146,8 @@ src_prepare() {
 
 	# bug with glibc-2.16.0
 	sed -i -e '/gets is a security/d' "${S}"/gnulib/stdio.in.h
+
+    mv configure.in configure.ac  || die #426262
 
 	eautoreconf
 
@@ -175,6 +181,10 @@ src_prepare() {
 		sed -i -e 's:^\(my $amandahomedir\)=.*:\1 = $localstatedir;:' \
 			server-src/am{addclient,serverconfig}.pl || die
 	fi
+
+	use perl && touch perl/*/*.swg
+	use perl && touch perl/*/*/*.swg
+	use perl && einfo "YES, DEBUGGING"
 }
 
 src_configure() {
@@ -274,7 +284,7 @@ src_configure() {
 	myconf="${myconf} `use_enable nls`"
 
 	# Bug #296634: Perl location
-	perlinfo
+	perl_set_version
 	myconf="${myconf} --with-amperldir=${VENDOR_LIB}"
 
 	# Bug 296633: --disable-syntax-checks
@@ -284,6 +294,9 @@ src_configure() {
 	# build manpages
 	myconf="${myconf} --enable-manpage-build"
 
+	# bug #483120
+	tc-export AR
+
 	econf \
 		$(use_with readline) \
 		${myconf}
@@ -291,7 +304,7 @@ src_configure() {
 
 src_compile() {
 	# Again, do not want the perl-module src_compile
-	base_src_compile
+	default_src_compile
 }
 
 src_install() {
@@ -374,12 +387,12 @@ src_install() {
 		"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
 		 "${AMANDA_USER_HOMEDIR}/amanda" \
 		 /etc/amanda
-		 
-		 	if ! use minimal ; then
-		 		fperms 0700 \
-		 			 "${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
-		 	         /etc/amanda/${AMANDA_CONFIG_NAME}
-		 	fi
+
+	if ! use minimal ; then
+		fperms 0700 \
+			 "${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
+	         /etc/amanda/${AMANDA_CONFIG_NAME}
+	fi
 
 	einfo "Setting setuid permissions"
 	amanda_permissions_fix "${D}"

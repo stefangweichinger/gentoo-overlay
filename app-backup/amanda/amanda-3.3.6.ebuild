@@ -42,9 +42,10 @@ DEPEND="${RDEPEND}
 	>=app-text/docbook-xsl-stylesheets-1.72.0
 	app-text/docbook-xml-dtd
 	dev-libs/libxslt
+	perl? ( dev-lang/swig )
 	"
 
-IUSE="curl gnuplot ipv6 kerberos minimal nls readline s3 samba systemd xfs"
+IUSE="curl gnuplot ipv6 kerberos minimal nls perl readline s3 samba systemd xfs"
 
 MYFILESDIR="${T}/files"
 ENVDIR="/etc/env.d"
@@ -133,6 +134,8 @@ pkg_setup() {
 src_unpack() {
 	# we do not want the perl src_unpack
 	default_src_unpack
+	cd "${S}"
+	epatch "${FILESDIR}"/struct-swg.diff
 }
 
 src_prepare() {
@@ -143,6 +146,8 @@ src_prepare() {
 
 	# bug with glibc-2.16.0
 	sed -i -e '/gets is a security/d' "${S}"/gnulib/stdio.in.h
+
+    mv configure.in configure.ac  || die #426262
 
 	eautoreconf
 
@@ -176,6 +181,9 @@ src_prepare() {
 		sed -i -e 's:^\(my $amandahomedir\)=.*:\1 = $localstatedir;:' \
 			server-src/am{addclient,serverconfig}.pl || die
 	fi
+
+	use perl && touch perl/*/*.swg
+
 }
 
 src_configure() {
@@ -275,7 +283,7 @@ src_configure() {
 	myconf="${myconf} `use_enable nls`"
 
 	# Bug #296634: Perl location
-	perlinfo
+	perl_set_version
 	myconf="${myconf} --with-amperldir=${VENDOR_LIB}"
 
 	# Bug 296633: --disable-syntax-checks

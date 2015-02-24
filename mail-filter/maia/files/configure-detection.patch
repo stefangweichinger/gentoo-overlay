@@ -1,0 +1,279 @@
+diff -ru maia-1.0.1/php/admin/configtest.php maia-1.0.1-agh/php/admin/configtest.php
+--- maia-1.0.1/php/admin/configtest.php	2006-03-27 13:52:29.000000000 +0200
++++ maia-1.0.1-agh/php/admin/configtest.php	2006-07-17 18:16:30.000000000 +0200
+@@ -98,6 +98,7 @@
+     define('OK', "ok");
+     define('WARN', "warn");
+     define('ERROR', "error");
++    define('UNK_VER', "unk");
+     define('UPDATE', "update");
+ 
+     function print_row($left, $right, $err = OK) {
+@@ -111,6 +112,10 @@
+             case UPDATE:
+                 $color = "#DDDD00";
+                 break;
++            case UNK_VER:
++                $status = "<b>UNKNOW VERSION</b>";
++                $color = "#9999FF";
++		break;
+             case ERROR:
+                 $color = "#FE899B";
+                 $status = "<b>FAILED</b>";
+@@ -132,6 +137,19 @@
+ 
+     $status = OK;
+ 
++    function check_pear_module($my_path, $my_function = '') {
++        $ret = @include_once $my_path;
++        // Test the user given function
++        if ($res && isset($my_function)) {
++            $func_ret = call_user_func($my_function);
++            if ($func_ret) {
++                $ret = false;
++                $msg = $func_ret;
++            }
++	}
++	return $ret;
++    }
++
+     //smarty compile dirs file permissions.
+     $smarty_base = "../themes"; // this assumes configtest.php is located in webroot/admin/
+     $result = "";
+@@ -269,10 +287,18 @@
+     // PEAR::Mail_Mime
+     if ($have_pear) {
+       if (!in_array("mail_mime", $pear_list)) {
+-        $result = "Not installed.  This PHP extension is required to decode " .
+-                  "MIME-structured e-mail.  Use <b>pear install Mail_Mime</b> to " .
+-                  "install this.";
+-        $status = ERROR;
++        $installed = check_pear_module('Mail/mime.php');
++	if (! $installed) {
++          $result = "Not installed.  This PHP extension is required to decode " .
++                    "MIME-structured e-mail.  Use <b>pear install Mail_Mime</b> to " .
++                    "install this.";
++          $status = ERROR;
++        } else {
++	  $result = "Installed, but cannot determine version. Please check your " .
++	            "system package manager. Versions of Mail_Mime below 1.3.0  " .
++		    "are known to be buggy.";
++          $status = UNK_VER;
++	}
+       } else {
+         $info = $pear_reg->packageInfo("Mail_Mime");
+         $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+@@ -287,6 +313,7 @@
+         }
+       }
+     } else {
++    	
+         $result = "Requires PEAR";
+         $status = WARN;
+     }
+@@ -302,9 +329,24 @@
+     // PEAR::DB
+     if ($have_pear) {
+         if (!in_array("db", $pear_list)) {
++	  $installed = check_pear_module('DB.php');
++	  if (! $installed) {
+             $result = "Not installed.  This PHP extension is required in order to provide " .
+                       "database abstraction.  Use <b>pear install DB</b> to install this.";
+             $status = ERROR;
++	 } else {
++	   $result = "Installed, but cannot determine version. Please check your " .
++	             "system package manager.";
++	   include_once ("DB.php");
++           $test_dbh = DB::connect($maia_sql_dsn);
++	   if (DB::isError($test_dbh)) {
++	       $result .= "Could not connect to database.  Check the \$maia_sql_dsn setting in config.php.";
++	       $status = ERROR;
++	   } else {
++	       $result .= "Database connexion test OK.";
++	       $status = UNK_VER;
++	   }
++	 }
+         } else {
+           $db_info = $pear_reg->packageInfo("DB");
+           $pathArray = explode( PATH_SEPARATOR, get_include_path() );
+@@ -336,10 +378,17 @@
+     // PEAR::DB_Pager
+     if ($have_pear) {
+         if (!in_array("db_pager", $pear_list)) {
+-            $result = "Not installed.  This PHP extension is required in order to paginate " .
+-                      "the list of mail items in the quarantines and the ham cache.  Use " .
+-                      "<b>pear install DB_Pager</b> to install this.";
+-            $status = ERROR;
++            $installed = check_pear_module('Pager/Pager.php');
++            if (! $installed) {
++                $result = "Not installed.  This PHP extension is required in order to paginate " .
++                          "the list of mail items in the quarantines and the ham cache.  Use " .
++                          "<b>pear install DB_Pager</b> to install this.";
++                $status = ERROR;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager.";
++                $status = UNK_VER;
++            }
+         } else {
+             $pager_info = $pear_reg->packageInfo("DB_Pager");
+     	    $result = is_array($pager_info["version"])?$pager_info["version"]["release"]:$pager_info["version"];
+@@ -352,11 +401,18 @@
+     print_row("PEAR::DB_Pager", $result, $status);
+ 
+ 
+-	  // PEAR::Net_Socket
++    // PEAR::Net_Socket
+     if ($have_pear) {
+         if (!in_array("net_socket", $pear_list)) {
+-            $result = "Not installed.  This PHP extension is required for Net_SMTP to send mail when rescuing email";
+-            $status = ERROR;
++	    $installed = check_pear_module('Net/Socket.php');
++	    if (! $installed) {
++                $result = "Not installed.  This PHP extension is required for Net_SMTP to send mail when rescuing email";
++                $status = ERROR;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager.";
++                $status = UNK_VER;
++            }
+         } else {
+     	    $info = $pear_reg->packageInfo("Net_Socket");
+     	    $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+@@ -371,34 +427,46 @@
+ 
+     // PEAR::Net_SMTP
+     if ($have_pear) {
+-      if (!in_array("net_smtp", $pear_list)) {
+-        $result = "Not installed.  This PHP extension is required to send mail when rescuing email";
+-        $status = ERROR;
+-      } else {
+-        $info = $pear_reg->packageInfo("Net_SMTP");
+-        $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+-        if (version_compare($result,"1.1.0") < 0) {
+-          $version = $result;
+-          $result = "Version $version installed.  Need at least 1.1.0";
+-          $status = ERROR;
++        if (!in_array("net_smtp", $pear_list)) {
++            $installed = check_pear_module('Net/SMTP.php');
++            if (! $installed) {
++                $result = "Not installed.  This PHP extension is required to send mail when rescuing email";
++                $status = ERROR;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager. Need at least version 1.2.5";
++                $status = UNK_VER;
++            }
+         } else {
+-          $status = OK;
++            $info = $pear_reg->packageInfo("Net_SMTP");
++            $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
++            if (version_compare($result,"1.2.5") < 0) {
++                $version = $result;
++                $result = "Version $version installed.  Need at least 1.2.5";
++                $status = ERROR;
++            } else {
++               $status = OK;
++            }
+         }
+-      }
+     } else {
+-      $result ="Requires PEAR";
+-      $status = WARN;
++        $result ="Requires PEAR";
++        $status = WARN;
+     }
+     print_row("PEAR::Net_SMTP", $result, $status);
+ 
+     // PEAR::Auth_SASL
+     if ($have_pear) {
+         if (!in_array("auth_sasl", $pear_list)) {
+-            $result = "Not installed.  Optional package. If it is available, " .
+-                      "the Net_SMTP package will be able to support the DIGEST-MD5 " .
+-                      "and CRAM-MD5 SMTP authentication methods. Otherwise, only " .
+-                      "the LOGIN and PLAIN methods will be available.";
+-            $status = WARN;
++            $installed = check_pear_module('Auth/SASL.php');
++            if (! $installed) {
++                $result = "Not installed.  This module is required by PEAR::Net_SMTP in " .
++                          "order to support the DIGEST-MD5 and CRAM-MD5 SMTP authentication methods.";
++                $status = ERROR;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager.";
++                $status = UNK_VER;
++            }
+         } else {
+             $info = $pear_reg->packageInfo("Auth_SASL");
+             $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+@@ -413,13 +481,24 @@
+     // PEAR::Net_IMAP
+     if ($have_pear) {
+         if (!in_array("net_imap", $pear_list)) {
+-            $result = "Not installed.  This PHP extension is required to authenticate maia against IMAP.";
+-            $status = WARN;
++            $installed = check_pear_module('Net/IMAP.php');
++            if (! $installed) {
++                $result = "Not installed.  This PHP extension is required to authenticate maia against IMAP.";
++                $status = WARN;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager. A bug exists in Net_IMAP 1.0.3 when run under PHP 5, " .
++                          " see <a href=\"https://secure.renaissoft.com/maia/ticket/266\">https://secure." .
++                          "renaissoft.com/maia/ticket/266</a> for more details.";;
++                $status = UNK_VER;
++            }
+         } else {
+             $info = $pear_reg->packageInfo("Net_IMAP");
+             $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+           if ($result == "1.0.3" && $php_version >= "5.0.0") {
+-             $result = "A bug exists in Net_IMAP 1.0.3 when run under PHP 5, see <a href=\"https://secure.renaissoft.com/maia/ticket/266\">https://secure.renaissoft.com/maia/ticket/266</a> for more details.";
++             $result = "A bug exists in Net_IMAP 1.0.3 when run under PHP 5, see <a href=\"" .
++                       "https://secure.renaissoft.com/maia/ticket/266\">https://secure." .
++                       "renaissoft.com/maia/ticket/266</a> for more details.";
+              $status = WARN;      
+           } else {
+             $status = OK;
+@@ -434,8 +513,15 @@
+     // PEAR::Net_POP3
+     if ($have_pear) {
+         if (!in_array("net_pop3", $pear_list)) {
+-            $result = "Not installed.  This PHP extension is required to authenticate maia against POP3.";
+-            $status = WARN;
++            $installed = check_pear_module('Net/POP3.php');
++            if (! $installed) {
++                $result = "Not installed.  This PHP extension is required to authenticate maia against POP3.";
++                $status = WARN;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager.";
++                $status = UNK_VER;
++            }
+         } else {
+             $info = $pear_reg->packageInfo("Net_POP3");
+             $result = is_array($info["version"])?$info["version"]["release"]:$info["version"];
+@@ -450,10 +536,17 @@
+     // PEAR::Log
+     if ($have_pear) {
+         if (!in_array("log", $pear_list)) {
+-            $result = "Not installed, but only required if you want to be able to log user " .
+-                      "and administrator activity.  Use <b>pear install Log</b> to install " .
+-                      "this PHP extension.";
+-            $status = ERROR;
++            $installed = check_pear_module('Log.php');
++            if (! $installed) {
++                $result = "Not installed, but only required if you want to be able to log user " .
++                          "and administrator activity.  Use <b>pear install Log</b> to install " .
++                          "this PHP extension.";
++                $status = ERROR;
++            } else {
++                $result = "Installed, but cannot determine version. Please check your " .
++                          "system package manager.";
++                $status = UNK_VER;
++            }
+         } else {
+     	    $log_info = $pear_reg->packageInfo("Log");
+     	    $result = is_array($log_info["version"])?$log_info["version"]["release"]:$log_info["version"];
+Seulement dans maia-1.0.1-agh/php/admin: configtest.php.orig
+Seulement dans maia-1.0.1-agh/php/admin: configtest.php.rej
+Seulement dans maia-1.0.1-agh/php/admin: .configtest.php.rej.swp

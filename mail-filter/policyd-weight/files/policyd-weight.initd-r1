@@ -1,0 +1,51 @@
+#!/sbin/runscript
+# Copyright 1999-2009 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Header: Exp $
+
+opts="${opts} reload"
+
+depend() {
+	use logger net
+	before postfix
+}
+
+start() {
+	local polw_user="$(sed -n "s:^[\t ]*\$USER[\t ]*=[\t ]*[\"']\([^\"']*\).*:\1:gp" /etc/policyd-weight.conf 2>/dev/null | head -n 1)"
+	local polw_group="$(sed -n "s:^[\t ]*\$GROUP[\t ]*=[\t ]*[\"']\([^\"']*\).*:\1:gp" /etc/policyd-weight.conf 2>/dev/null | head -n 1)"
+	local polw_lockpath="$(sed -n "s:^[\t ]*\$LOCKPATH[\t ]*=[\t ]*[\"']\([^\"']*\).*:\1:gp" /etc/policyd-weight.conf 2>/dev/null | head -n 1)"
+	if [ -d "${polw_lockpath}" ]; then
+		if [ -S "${polw_lockpath}/polw.sock" ]; then
+			chown ${polw_user:+polw}:${polw_group:+polw} "${polw_lockpath}/polw.sock" 2>/dev/null || true
+		fi
+		if [ -S "${polw_lockpath}/polw.sock.debug" ]; then
+			chown ${polw_user:+polw}:${polw_group:+polw} "${polw_lockpath}/polw.sock.debug" 2>/dev/null || true
+		fi
+		if [ -d "${polw_lockpath}/cores" ]; then
+			chown -R ${polw_user:+polw}:${polw_group:+polw} "${polw_lockpath}/cores" 2>/dev/null || true
+		fi
+	fi
+	ebegin "Starting ${SVCNAME}"
+	/usr/sbin/policyd-weight start
+	eend $?
+}
+
+stop() {
+	ebegin "Shutting down ${SVCNAME} (master)"
+	/usr/sbin/policyd-weight stop >/dev/null 2>&1
+	ebegin "Shutting down ${SVCNAME} (cache)"
+	/usr/sbin/policyd-weight -k
+	eend $?
+}
+
+reload() {
+	ebegin "Reloading policyd-weight-devel"
+	/usr/sbin/policyd-weight reload
+	eend $?
+}
+
+svc_restart() {
+	ebegin "Restarting policyd-weight-devel"
+	/usr/sbin/policyd-weight restart
+	eend $?
+}

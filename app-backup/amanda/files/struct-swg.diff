@@ -1,0 +1,74 @@
+diff --git a/perl/Amanda/Cmdline.swg b/perl/Amanda/Cmdline.swg
+index 35d931d..fcbe377 100644
+--- a/perl/Amanda/Cmdline.swg
++++ b/perl/Amanda/Cmdline.swg
+@@ -35,7 +35,7 @@
+ %}
+ 
+ /* Add a few methods to make this type act like a class */
+-typedef struct dumpspec_t {
++typedef struct {
+     %immutable;
+     char *host;
+     char *disk;
+diff --git a/perl/Amanda/Device.swg b/perl/Amanda/Device.swg
+index eb581a9..bdcfc12 100644
+--- a/perl/Amanda/Device.swg
++++ b/perl/Amanda/Device.swg
+@@ -243,7 +243,7 @@ set_gvalue_from_sv(SV *sv, GValue *value)
+  * DirectTCPConnection object
+  */
+ 
+-typedef struct DirectTCPConnection {
++typedef struct {
+     %extend {
+ 	~DirectTCPConnection() {
+ 	    g_object_unref(self);
+@@ -262,7 +262,7 @@ typedef struct DirectTCPConnection {
+ 
+ %name(unaliased_name) extern char *device_unaliased_name(char *);
+ 
+-typedef struct Device {
++typedef struct {
+ 
+     /* methods */
+     %extend {
+diff --git a/perl/Amanda/MainLoop.swg b/perl/Amanda/MainLoop.swg
+index f040de6..85aae9d 100644
+--- a/perl/Amanda/MainLoop.swg
++++ b/perl/Amanda/MainLoop.swg
+@@ -356,7 +356,7 @@ void quit(void) {
+ %{ static void amglue_source_remove(amglue_Source *self); %}
+ 
+ %rename(Source) amglue_Source;
+-typedef struct amglue_Source {
++typedef struct {
+     %extend {
+ 	/* Constructor: use one of the package-level functions, below */
+ 	amglue_Source() {
+diff --git a/perl/Amanda/NDMP.swg b/perl/Amanda/NDMP.swg
+index d43ebb0..0c6b1f2 100644
+--- a/perl/Amanda/NDMP.swg
++++ b/perl/Amanda/NDMP.swg
+@@ -93,7 +93,7 @@ typedef guint ndmp_enum;
+     SP -= argvi; argvi++;
+ }
+ 
+-typedef struct NDMPConnection {
++typedef struct {
+     /* methods */
+     %extend {
+ 	/* constructor */
+diff --git a/perl/Amanda/Util.swg b/perl/Amanda/Util.swg
+index 6cf255e..4b93d5d 100644
+--- a/perl/Amanda/Util.swg
++++ b/perl/Amanda/Util.swg
+@@ -462,7 +462,7 @@ set_blocking(int fd, gboolean blocking)
+ /* SWIG prepends the struct name to the member function name, which
+  * conflicts with the underlying function names */
+ 
+-typedef struct file_lock {
++typedef struct {
+     %extend {
+ 	%newobject file_lock;
+ 	file_lock(const char *filename) {

@@ -1,0 +1,72 @@
+For new installations:
+
+1. Create a database for Maia Mailguard.
+	MySQL:	
+	Create database :
+	mysql -u root -p mysql
+	mysql> CREATE DATABASE maia;
+
+	Populate DB with initial data :
+	mysql -u root -p maia < maia-mysql.sql
+
+	Setup rights :
+	mysql -u root -p maia
+	mysql> GRANT CREATE, DROP, ALTER, SELECT, INSERT, UPDATE, DELETE ON maia.* TO amavis@localhost IDENTIFIED BY 'passwd';
+
+	Setup MySQL ressources in my.cnf :
+	[mysql]
+	max_allowed_packet=10M
+
+	PostgreSQL:
+	psql -U postgres -d template1
+	postgres=# CREATE USER amavis PASSWORD 'passwd';
+	postgres=# CREATE DATABASE maia;
+	
+	Populate DB with initial data :
+	psql -U postgres -d maia < maia-psql.sql
+
+	Setup rights :
+	psql -U postgres -d maia
+    postgres=# GRANT CREATE, DROP, ALTER, SELECT, INSERT, UPDATE, DELETE ON maia TO amavis;
+
+
+2. Edit configuration file /etc/maia.conf
+	MySQL :
+	# Configure your database DSN here
+	dsn = "DBI:mysql:maia:localhost:3306"
+
+	# Your database user's login name
+	username = "amavis"
+
+	# Your database user's password
+	password = "passwd"
+
+	PostgreSQL :
+	# Configure your database DSN here
+	dsn = "DBI:Pg:dbname=maia;host=localhost;port=5432"
+
+	# Your database user's login name
+	username = "amavis"
+
+	# Your database user's password
+	password = "passwd"
+
+
+3. Now browse to http://${VHOST_HOSTNAME}/${VHOST_APPDIR}/admin/configtest.php
+
+NOTE: 
+Detailed installation instructions for Maia Mailguard 1.0.1 can be
+found at <http://www.maiamailguard.com/install.php>.
+
+Instructions for upgrading to Maia Mailguard 1.0.1 from earlier
+versions can be found at <http://www.maiamailguard.com/upgrade.php>.
+
+  !!!!!!!!!!!!!
+  !! WARNING !!
+  !!!!!!!!!!!!!
+If you use the RulesDuJour script to automatically update your third-party
+SpamAssassin rules for you (highly recommended), you'll want to modify the
+SA_RESTART setting in the /etc/rulesdujour/config file to ensure that it
+runs load-sa-rules.pl after it makes any rule changes:
+SA_RESTART="/usr/bin/load-sa-rules.pl;/etc/init.d/spamd restart"
+

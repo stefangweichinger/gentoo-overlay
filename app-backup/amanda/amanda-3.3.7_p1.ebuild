@@ -1,13 +1,13 @@
-# Copyright 1999-2013 Gentoo Foundation
+# Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3.ebuild,v 1.8 2013/09/10 06:14:32 idella4 Exp $
+# $Header: /var/cvsroot/gentoo-x86/app-backup/amanda/amanda-3.3.3-r1.ebuild,v 1.7 2014/05/21 12:07:27 pinkbyte Exp $
 
 EAPI=5
 inherit autotools eutils perl-module user systemd
 
 DESCRIPTION="The Advanced Maryland Automatic Network Disk Archiver"
 HOMEPAGE="http://www.amanda.org/"
-SRC_URI="mirror://sourceforge/amanda/${P}.tar.gz"
+SRC_URI="mirror://sourceforge/amanda/amanda-3.3.7p1.tar.gz"
 LICENSE="HPND BSD BSD-2 GPL-2+ GPL-3+"
 SLOT="0"
 KEYWORDS="amd64 ppc ppc64 ~sparc x86"
@@ -27,6 +27,7 @@ RDEPEND="sys-libs/readline
 	readline? ( sys-libs/readline )
 	!systemd? ( virtual/inetd )
 	!minimal? (
+		dev-perl/XML-Simple
 		virtual/mailx
 		app-arch/mt-st
 		sys-block/mtx
@@ -63,6 +64,8 @@ AMANDA_SERVER AMANDA_SERVER_TAPE AMANDA_SERVER_INDEX
 AMANDA_TAR_LISTDIR AMANDA_TAR
 AMANDA_PORTS_UDP AMANDA_PORTS_TCP AMANDA_PORTS_BOTH AMANDA_PORTS
 AMANDA_CONFIG_NAME AMANDA_TMPDIR"
+
+S="/var/tmp/portage/app-backup/amanda-3.3.7_p1/work/amanda-3.3.7p1"
 
 amanda_variable_setup() {
 
@@ -131,7 +134,9 @@ pkg_setup() {
 
 src_unpack() {
 	# we do not want the perl src_unpack
-	base_src_unpack
+	default_src_unpack
+	cd "${S}"
+	epatch "${FILESDIR}"/amadmin-tape-days-3.3.diff
 }
 
 src_prepare() {
@@ -142,6 +147,8 @@ src_prepare() {
 
 	# bug with glibc-2.16.0
 	sed -i -e '/gets is a security/d' "${S}"/gnulib/stdio.in.h
+
+    mv configure.in configure.ac  || die #426262
 
 	eautoreconf
 
@@ -175,6 +182,7 @@ src_prepare() {
 		sed -i -e 's:^\(my $amandahomedir\)=.*:\1 = $localstatedir;:' \
 			server-src/am{addclient,serverconfig}.pl || die
 	fi
+
 }
 
 src_configure() {
@@ -274,7 +282,7 @@ src_configure() {
 	myconf="${myconf} `use_enable nls`"
 
 	# Bug #296634: Perl location
-	perlinfo
+	perl_set_version
 	myconf="${myconf} --with-amperldir=${VENDOR_LIB}"
 
 	# Bug 296633: --disable-syntax-checks
@@ -284,6 +292,9 @@ src_configure() {
 	# build manpages
 	myconf="${myconf} --enable-manpage-build"
 
+	# bug #483120
+	tc-export AR
+
 	econf \
 		$(use_with readline) \
 		${myconf}
@@ -291,7 +302,7 @@ src_configure() {
 
 src_compile() {
 	# Again, do not want the perl-module src_compile
-	base_src_compile
+	default_src_compile
 }
 
 src_install() {
@@ -335,7 +346,7 @@ src_install() {
 
 	einfo "Installing systemd service and socket files for Amanda"
 	systemd_dounit "${FILESDIR}"/amanda.socket || die
-	systemd_newunit "${FILESDIR}"/amanda.service 'amanda@.service' || die
+	systemd_newunit "${FILESDIR}"/amanda.service-r1 'amanda@.service' || die
 
 	insinto /etc/amanda
 	einfo "Installing .amandahosts File for ${AMANDA_USER_NAME} user"
@@ -370,19 +381,16 @@ src_install() {
 	done
 	# Do NOT use -R
 	fperms 0700 \
-	"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
-	"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
-	"${AMANDA_USER_HOMEDIR}/amanda" \
-	/etc/amanda
+		"${AMANDA_USER_HOMEDIR}" "${AMANDA_TAR_LISTDIR}" \
+		"${AMANDA_TMPDIR}" "${AMANDA_TMPDIR}/dumps" \
+		 "${AMANDA_USER_HOMEDIR}/amanda" \
+		 /etc/amanda
 
 	if ! use minimal ; then
 		fperms 0700 \
-			"${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
-			/etc/amanda/${AMANDA_CONFIG_NAME}
+			 "${AMANDA_USER_HOMEDIR}/${AMANDA_CONFIG_NAME}" \
+	         /etc/amanda/${AMANDA_CONFIG_NAME}
 	fi
-
-		einfo "Setting setuid permissions"
-		amanda_permissions_fix "${D}"
 
 	einfo "Setting setuid permissions"
 	amanda_permissions_fix "${D}"

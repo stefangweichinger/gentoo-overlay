@@ -1,0 +1,11 @@
+--- policyd-weight	2010-06-13 05:53:17.000000000 +0200
++++ policyd-weight.new	2010-07-27 22:19:36.738388447 +0200
+@@ -2139,7 +2139,7 @@
+                 }
+                 $blocked = $instance;
+                 mylog(info=>"weighted check: $RET; $trace_info; rate: $rate");
+-                return($MAXDNSBLMSG."; check http://www.robtex.com/rbl/$ip.html");
++                return($MAXDNSBLMSG."; check http://multirbl.valli.org/lookup/$ip.html");
+             }
+         }
+     }

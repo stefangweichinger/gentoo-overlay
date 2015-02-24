@@ -1,0 +1,16 @@
+# Location of logfile that all (!) mail software (MTA, spamfilter etc.) logs to.
+# greygraph defaults to /var/log/syslog if unspecified
+GG_LOGFILE="/var/log/mail"
+
+# Required daemon settings
+GG_DAEMON_UID="ggraph"
+GG_DAEMON_GID="adm"
+GG_DAEMON_UMASK="0022"
+GG_DAEMON_LOG="/var/log/greygraph/greygraph.log"
+GG_DAEMON_PID="/var/run/greygraph/greygraph.pid"
+GG_DAEMON_RRD="/var/lib/greygraph"
+
+# Specify any extra options here.
+# If GG_LOGFILE is in metalog format, add "-t metalog" to GG_DAEMON_OPTS
+#GG_DAEMON_OPTS="--ignore-localhost"
+GG_DAEMON_OPTS=""
