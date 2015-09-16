@@ -142,7 +142,9 @@ src_install() {
 	done
 	doenvd "${T}/50${PN}" || die
 
-	systemd_dounit "${FILESDIR}/otrs-daemon.service"
+	if ! use systemd ; then
+		systemd_dounit "${FILESDIR}/otrs-daemon.service"
+	fi
 
 }
 
