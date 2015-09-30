@@ -14,10 +14,6 @@ LICENSE="AGPL-3"
 KEYWORDS="~amd64 ~x86"
 IUSE="apache2 fastcgi +gd ldap mod_perl +mysql pdf postgres soap"
 SLOT="0"
-#WEBAPP_MANUAL_SLOT="yes"
-
-# FIXME add oracle/mssql/DB2 DB support
-# FIXME #cjk? ( >=dev-perl/Encode-HanExtra-0.23 ) unsatisfied dep
 
 RDEPEND="dev-perl/Apache-Reload
 	dev-perl/Archive-Zip
@@ -64,15 +60,11 @@ RDEPEND="dev-perl/Apache-Reload
 	>=virtual/perl-Digest-SHA-5.48
 	virtual/mta
 	apache2? ( mod_perl? ( www-servers/apache:2
-					=www-apache/libapreq2-2* www-apache/mod_perl )
-		fastcgi? ( || ( www-apache/mod_fcgid www-apache/mod_fastcgi )
-				www-servers/apache:2[suexec] )
-		!fastcgi? (
-			!mod_perl? ( www-servers/apache:2[suexec] ) )
-			)
+		=www-apache/libapreq2-2* www-apache/mod_perl )
+	!fastcgi? ( !mod_perl? ( www-servers/apache:2[suexec] ) )
+	!fastcgi? ( !mod_perl? ( www-servers/apache:2[suexec] ) ) )
 	fastcgi? ( dev-perl/FCGI virtual/httpd-fastcgi )
-	!fastcgi? (
-		!apache2? ( virtual/httpd-cgi ) )"
+	!fastcgi? ( !apache2? ( virtual/httpd-cgi ) )"
 
 OTRS_HOME="/var/lib/otrs"
 
@@ -88,13 +80,6 @@ pkg_setup() {
 src_prepare() {
 	rm -fr "${S}/scripts"/{auto_*,redhat*,suse*,*.spec} || die
 	cp Kernel/Config.pm{.dist,} || die
-	# procmail/fetchmail/mailfilter
-#	local mailrc=".fetchmailrc .mailfilter .procmailrc"
-#	for i in ${mailrc}; do
-#		mv ${i}{.dist,} || die
-#	done
-#	fperms 600 ${mailrc} || die
-#	fowners otrs ${mailrc} || die
 
 	sed -i -e "s:/opt/otrs:${OTRS_HOME}:g" "${S}"/Kernel/Config.pm \
 		|| die "sed failed"
@@ -113,12 +98,18 @@ src_prepare() {
 
 }
 
+# This is too automagic, either einfo telling user or installing to /etc/cron.d/ should be preferred
+pkg_config() {
+	einfo "Installing cronjobs"
+	crontab -u otrs /usr/share/doc/${PF}/crontab
+}
+
 src_install() {
-	dodoc CHANGES.md README* || die
+	dodoc CHANGES.md README*
 
 	insinto "${OTRS_HOME}"
 	doins -r .fetchmailrc.dist .mailfilter.dist .procmailrc.dist RELEASE \
-		Custom Kernel bin scripts var || die "doins failed"
+		Custom Kernel bin scripts var
 
 	cat "${S}"/var/cron/*.dist > crontab
 	insinto /usr/share/doc/${PF}/
@@ -127,13 +118,7 @@ src_install() {
 	for a in article log pics/images pics/stats pics sessions spool tmp tmp/CacheFileStorable; do
 		keepdir "${OTRS_HOME}/var/${a}"
 	done
-	doenvd "${T}/50${PN}" || die
-}
-
-# This is too automagic, either einfo telling user or installing to /etc/cron.d/ should be preferred
-pkg_config() {
-	einfo "Installing cronjobs"
-	crontab -u otrs /usr/share/doc/${PF}/crontab
+	doenvd "${T}/50${PN}"
 }
 
 pkg_postinst() {
