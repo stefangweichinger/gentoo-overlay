@@ -81,6 +81,10 @@ src_prepare() {
 	rm -fr "${S}/scripts"/{auto_*,redhat*,suse*,*.spec} || die
 	cp Kernel/Config.pm{.dist,} || die
 
+	# Fix broken png files
+	pngfix -q --out=out.png "${S}/var/httpd/htdocs/skins/Agent/default/img/otrs-verify.png"
+	mv -f out.png "${S}/var/httpd/htdocs/skins/Agent/default/img/otrs-verify.png" || die
+
 	sed -i -e "s:/opt/otrs:${OTRS_HOME}:g" "${S}"/Kernel/Config.pm \
 		|| die "sed failed"
 
