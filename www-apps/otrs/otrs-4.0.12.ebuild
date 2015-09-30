@@ -15,6 +15,8 @@ KEYWORDS="~amd64 ~x86"
 IUSE="apache2 fastcgi +gd ldap mod_perl +mysql pdf postgres soap"
 SLOT="0"
 
+DEPEND="media-libs/libpng"
+
 RDEPEND="dev-perl/Apache-Reload
 	dev-perl/Archive-Zip
 	dev-perl/Authen-SASL
