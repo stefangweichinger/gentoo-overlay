@@ -19,10 +19,6 @@ DEPEND="media-libs/libpng"
 
 RDEPEND="dev-perl/Apache-Reload
 	dev-perl/Archive-Zip
-	dev-perl/Authen-SASL
-	dev-perl/Crypt-PasswdMD5
-	dev-perl/CSS-Minifier
-	dev-perl/Date-Pcalc
 	mysql? ( dev-perl/DBD-mysql )
 	postgres? ( dev-perl/DBD-Pg )
 	dev-perl/DBI
@@ -30,19 +26,11 @@ RDEPEND="dev-perl/Apache-Reload
 		dev-perl/GDTextUtil
 		dev-perl/GDGraph )
 	dev-perl/IO-Socket-SSL
-	>=dev-perl/JavaScript-Minifier-1.05
-	>=dev-perl/JSON-2.21
 	dev-perl/JSON-XS
 	dev-perl/LWP-UserAgent-Determined
 	dev-perl/Mail-POP3Client
-	dev-perl/MailTools
-	>=dev-perl/MIME-tools-5.427
-	dev-perl/NetxAP
-	dev-perl/Net-IMAP-Simple-SSL
+	dev-perl/Mail-IMAPClient
 	>dev-perl/Net-DNS-0.60
-	dev-perl/Net-SMTP-SSL
-	dev-perl/Net-SMTP-TLS
-	dev-perl/IO-stringy
 	pdf? ( >=dev-perl/PDF-API2-0.73
 		virtual/perl-Compress-Raw-Zlib )
 	ldap? ( dev-perl/perl-ldap )
@@ -51,16 +39,10 @@ RDEPEND="dev-perl/Apache-Reload
 		!=dev-perl/SOAP-Lite-0.711
 		!=dev-perl/SOAP-Lite-0.712 )
 	dev-perl/Template-Toolkit
-	dev-perl/Text-CSV
 	dev-perl/Text-CSV_XS
 	dev-perl/TimeDate
 	dev-perl/XML-Parser
 	dev-perl/YAML-LibYAML
-	virtual/perl-MIME-Base64
-	virtual/perl-libnet
-	virtual/perl-Digest-MD5
-	>=virtual/perl-Digest-SHA-5.48
-	virtual/mta
 	apache2? ( mod_perl? ( www-servers/apache:2
 		=www-apache/libapreq2-2* www-apache/mod_perl )
 	!fastcgi? ( !mod_perl? ( www-servers/apache:2[suexec] ) )
