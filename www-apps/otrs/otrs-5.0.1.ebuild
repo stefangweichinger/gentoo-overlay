@@ -6,9 +6,6 @@ EAPI=5
 
 inherit eutils confutils user systemd
 
-MY_PV="${PV/_rc/.rc}"
-MY_P="${PN}-${MY_PV}"
-
 DESCRIPTION="OTRS is an Open source Ticket Request System"
 HOMEPAGE="http://otrs.org/"
 SRC_URI="http://ftp.otrs.org/pub/${PN}/${P}.tar.bz2"
@@ -127,20 +124,16 @@ pkg_postinst() {
 		--otrs-user=otrs \
 		--web-group=apache \
 		|| die "Could not set permissions"
-
-	einfo "Rebuilding config ..."
-	sudo -u otrs /usr/bin/env perl "${OTRS_HOME}"/bin/otrs.Console.pl Maint::Config::Rebuild \
-	|| die "Could not rebuild config"
-
-	einfo "Deleting cache ..."
-	sudo -u otrs /usr/bin/env perl "${OTRS_HOME}"/bin/otrs.Console.pl Maint::Cache::Delete \
-	|| die "Could not delete cache"
-
+	
 	einfo "Installation done!"
-
-	elog "Enable cronjobs with the following command:"
+	elog "1) Rebuild your config now by running the following commands:"
+	elog "sudo -u otrs /usr/bin/env perl "${OTRS_HOME}"/bin/otrs.Console.pl Maint::Config::Rebuild"
+	elog "sudo -u otrs /usr/bin/env perl "${OTRS_HOME}"/bin/otrs.Console.pl Maint::Cache::Delete"
+	elog ""
+	elog "2) Enable cronjobs with the following command:"
 	elog "crontab -u otrs crontab"
-	elog "systemd users: enable and start OTRS daemon ->"
+	elog ""
+	elog "3) systemd users: enable and start OTRS daemon:"
 	elog "systemctl enable otrs-daemon"
 	elog "systemctl start otrs-daemon"
 }
