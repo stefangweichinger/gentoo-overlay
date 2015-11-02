@@ -72,6 +72,9 @@ src_prepare() {
 	sed -i -e "s:/opt/otrs:${OTRS_HOME}:g" "${S}"/Kernel/Config.pm \
 		|| die "sed failed"
 
+	sed -i -e "s:/opt/otrs:${OTRS_HOME}:g" "${S}"/Kernel/Config/Defaults.pm \
+		|| die "sed failed"
+
 	grep -lR "/opt" "${S}"/scripts | \
 		xargs sed -i -e "s:/opt/otrs:${OTRS_HOME}:g" \
 		|| die "sed failed"
